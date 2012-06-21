@@ -102,8 +102,9 @@ class Tanking(LevelEntity):
         if float(self.initialAmount) > float(capacity):
             raise Exception("Initial amount greater than capacity")
         level = Level(capacity=float(capacity), sim=self.simulation)
-        init = OneShotProcess(self.simulation, self.initAction())
-        self.simulation.activate(init, init.shot())
+	if float(self.initialAmount) > 0:
+        	init = OneShotProcess(self.simulation, self.initAction())
+        	self.simulation.activate(init, init.shot())
         return level
     
     def action(self):
