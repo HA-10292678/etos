@@ -1,0 +1,18 @@
+window_sizes 1366 744 320 1040 670 0
+diagrams
+  active  classdiagram_ref 128008 // main classes
+    1040 670 120 4 0 0
+end
+show_stereotypes
+selected class_ref 128904 // Simulation
+open
+  class_ref 128008 // Entity
+  class_ref 128264 // SharedEntity
+  class_ref 128904 // Simulation
+  class_ref 129288 // SimPy.X.Resource
+  class_ref 129416 // Transaction
+  class_ref 129672 // XValueContext
+  class_ref 129800 // XValue
+  class_ref 130312 // TransactionManager
+end
+end

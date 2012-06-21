@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<model>
+<transaction id="gastrans" entities="#entities">
+    <infinity_loop>
+        <transaction>          
+            <pause><duration><normal mu="100" sigma="3"/></duration></pause>
+            <checkpoint referedEntity="prev">
+                <measure property="e.duration" category="real duration" type="log"></measure>
+            </checkpoint>
+            <tank id="TANK1">
+                <amount><pnormal mu="0.5" sigma="0.3"/></amount>
+            </tank>
+            <checkpoint referedEntity="prev">
+                <measure property="s.t" category="end" type="log"/>
+                <measure property="eso.amount" category="end" type="log"/>
+                <measure property="e.refuel" category="end" type="log"/>
+            </checkpoint>
+        </transaction>
+    </infinity_loop>
+</transaction>
+<entities>
+     <tank id="TANK1">
+        <capacity>100</capacity>
+        <initialAmount>10</initialAmount>
+     </tank>
+</entities>
+</model>
