@@ -101,11 +101,13 @@ class Tanking(LevelEntity):
         self.initialAmount = getXValue(xmlSource, "initialAmount", self.simulation.xcontext)
         if float(self.initialAmount) > float(capacity):
             raise Exception("Initial amount greater than capacity")
-        level = Level(capacity=float(capacity), sim=self.simulation)
-	if float(self.initialAmount) > 0:
-        	init = OneShotProcess(self.simulation, self.initAction())
-        	self.simulation.activate(init, init.shot())
-        return level
+        level = Level(capacity=float(capacity),sim=self.simulation)
+        resource=Resource(sim=self.simulation)
+        lev=LevelAdapter(level,resource)
+        if float(self.initialAmount)>0:	
+            init = OneShotProcess(self.simulation, self.initAction())
+            self.simulation.activate(init, init.shot())
+        return lev
     
     def action(self):
         yield self.get(float(self.refuel))
@@ -123,3 +125,35 @@ class OneShotProcess(Process):
         yield hold, self, self.delay
         yield next(self.generator)
 
+class UniversalResource(object):
+    def request(self):
+        raise NotImplementedError
+    def release(self):
+        raise NotImplementedError
+    def put(self):
+        raise NotImplementedError
+    def get(self):
+        raise NotImplementedError
+    
+
+class LevelAdapter(UniversalResource):
+    """prozatimní verze"""
+    def __init__(self, level, resource):
+        self.level=level
+        self.resource=resource
+    
+    def request(self):
+        return self.resource.request
+    def release(self):
+        return self.resource.release
+    def put(self):
+        return self.level.put
+    def get(self):
+        return self.level.get
+    def __getattr__(self,attr):
+        try:
+            return getattr(self.level,attr)
+        except Exception:
+            return getattr(self.resource,attr)
+    
+    
