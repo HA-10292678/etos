@@ -111,6 +111,9 @@ class Tanking(LevelEntity):
     
     def action(self):
         yield self.get(float(self.refuel))
+        yield request, self.transaction, self.sharedObject
+        yield self.hold(10)
+        yield release, self.transaction, self.sharedObject
         
     def initAction(self):
         yield self.put(float(self.initialAmount))
@@ -138,7 +141,7 @@ class UniversalResource(object):
 
 class LevelAdapter(UniversalResource):
     """prozatimní verze"""
-    def __init__(self, level, resource):
+    def __init__(self, level, resource, patience=True):
         self.level=level
         self.resource=resource
     
