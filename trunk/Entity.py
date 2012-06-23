@@ -107,10 +107,10 @@ class LevelEntity (SharedEntity):
         super().__init__(transaction, xmlSource)
 
     def get(self, amount):
-        return get, self.transaction, self.sharedObject, amount
+        return self.sharedObject.get(), self.transaction, self.sharedObject, amount
     
     def put(self, amount):
-        return put, self.transaction, self.sharedObject, amount
+        return self.sharedObject.put(), self.transaction, self.sharedObject, amount
 
         
 class TransactionEntity(Entity):
