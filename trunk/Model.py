@@ -110,7 +110,7 @@ class Tanking(LevelEntity):
         return lev
 
     def action(self):
-        yield self.sharedObject.request(), self.transaction, self.sharedObject
+        yield self.request()
         if self.sharedObject.patience==True and self.sharedObject.amount<float(self.refuel):
             yield self.get(self.sharedObject.amount)
             if len(self.sharedObject.waitQ)!=0:
@@ -119,7 +119,7 @@ class Tanking(LevelEntity):
         else:
             yield self.get(float(self.refuel))
         yield self.hold(10)
-        yield self.sharedObject.release(), self.transaction, self.sharedObject
+        yield self.release()
         
     def initAction(self):
         yield self.put(float(self.initialAmount))
