@@ -108,12 +108,18 @@ class Tanking(LevelEntity):
             init = OneShotProcess(self.simulation, self.initAction())
             self.simulation.activate(init, init.shot())
         return lev
-    
+
     def action(self):
-        yield self.get(float(self.refuel))
-        yield request, self.transaction, self.sharedObject
+        yield self.sharedObject.request(), self.transaction, self.sharedObject
+        if self.sharedObject.patience==True and self.sharedObject.amount<float(self.refuel):
+            yield self.get(self.sharedObject.amount)
+            if len(self.sharedObject.waitQ)!=0:
+                for x in self.sharedObject.waitQ:
+                    self.sharedObject.waitQ.put()
+        else:
+            yield self.get(float(self.refuel))
         yield self.hold(10)
-        yield release, self.transaction, self.sharedObject
+        yield self.sharedObject.release(), self.transaction, self.sharedObject
         
     def initAction(self):
         yield self.put(float(self.initialAmount))
@@ -138,21 +144,20 @@ class UniversalResource(object):
     def get(self):
         raise NotImplementedError
     
-
 class LevelAdapter(UniversalResource):
-    """prozatimní verze"""
     def __init__(self, level, resource, patience=True):
         self.level=level
         self.resource=resource
+        self.patience=patience
     
     def request(self):
-        return self.resource.request
+        return request
     def release(self):
-        return self.resource.release
+        return release
     def put(self):
-        return self.level.put
+        return put
     def get(self):
-        return self.level.get
+        return get
     def __getattr__(self,attr):
         try:
             return getattr(self.level,attr)
