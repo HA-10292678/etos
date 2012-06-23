@@ -111,7 +111,12 @@ class LevelEntity (SharedEntity):
     
     def put(self, amount):
         return self.sharedObject.put(), self.transaction, self.sharedObject, amount
-
+    
+    def request(self):
+        return self.sharedObject.request(), self.transaction, self.sharedObject
+    
+    def release(self):
+        return self.sharedObject.release(), self.transaction, self.sharedObject
         
 class TransactionEntity(Entity):
     """
