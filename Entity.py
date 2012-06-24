@@ -42,6 +42,34 @@ def getXValue(xmlSource, tag, context):
         mn = float(subNode.get("min", 0.0)) 
         mx = float(subNode.get("max", 1.0))
         return XValue(lambda: random.uniform(mn, mx), context)
+    elif subNode.tag == "triangular":
+        low = float(subNode.get("low", 0.0)) 
+        high = float(subNode.get("high", 1.0))
+        mode = float(subNode.get("mode", 1.0))
+        return XValue(lambda: random.triangular(low, high, mode), context)
+    elif subNode.tag == "beta":
+        alpha = float(subNode.get("alpha", 0.0)) 
+        beta = float(subNode.get("beta", 1.0))
+        return XValue(lambda: random.betavariate(alpha, beta), context)
+    elif subNode.tag == "gamma":
+        alpha = float(subNode.get("alpha", 0.0)) 
+        beta = float(subNode.get("beta", 1.0))
+        return XValue(lambda: random.gammavariate(alpha, beta), context)
+    elif subNode.tag == "lognormal":
+        mu = float(subNode.get("mu", 0.0))
+        sigma = float(subNode.get("sigma", 1.0))
+        return XValue(lambda: random.lognormvariate(mu, sigma), context)
+    elif subNode.tag == "vonmises":
+        mu = float(subNode.get("mu", 0.0))
+        kappa = float(subNode.get("kappa", 1.0))
+        return XValue(lambda: random.vonmisesvariate(mu, kappa), context)
+    elif subNode.tag == "pareto":
+        alpha = float(subNode.get("alpha", 0.0))
+        return XValue(lambda: random.paretovariate(alpha), context)
+    elif subNode.tag == "weibull":
+        alpha = float(subNode.get("alpha", 0.0)) 
+        beta = float(subNode.get("beta", 1.0))
+        return XValue(lambda: random.weibullvariate(alpha, beta), context)
     elif subNode.tag == "exponential":
         lamda = float(subNode.get("lambda", 1.0))
         return XValue(lambda: random.expovariate(lamda), context)
