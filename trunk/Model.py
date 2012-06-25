@@ -117,10 +117,10 @@ class ResourceTanking(SharedEntity):
                 (waitevent, self.transaction, self.sharedObject.emptyEvent))
        
     def get(self, amount):
-        return get, self.transaction, self.sharedObject.tank
+        return get, self.transaction, self.sharedObject.tank, amount
     
     def put(self, amount):
-        return put, self.transaction, self.sharedObject.tank
+        return put, self.transaction, self.sharedObject.tank, amount
 
     def release(self):
         return release, self.transaction, self.sharedObject.units
@@ -145,7 +145,7 @@ class ResourceTanking(SharedEntity):
             yield self.release()
         
     def initAction(self):
-        yield self.put(float(self.initialAmount))
+            yield self.put(float(self.initialAmount))
         
 class SimpleTanking(LevelEntity):
     def __init__(self, transaction, xmlSource):
