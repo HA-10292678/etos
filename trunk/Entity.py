@@ -17,7 +17,7 @@ class EntityError:
         super().__init__()
 
 def getXValue(xmlSource, tag, context):
-    node = xmlSource.find(tag)
+    node = xmlSource.findNode(tag)
     if node is None:
         raise InvalidXMLException("undefined attribute {0}".format(tag))
     subNode = node.find("*")
@@ -135,16 +135,11 @@ class LevelEntity (SharedEntity):
         super().__init__(transaction, xmlSource)
 
     def get(self, amount):
-        return self.sharedObject.get(), self.transaction, self.sharedObject, amount
+        return get, self.transaction, self.sharedObject, amount
     
     def put(self, amount):
-        return self.sharedObject.put(), self.transaction, self.sharedObject, amount
-    
-    def request(self):
-        return self.sharedObject.request(), self.transaction, self.sharedObject
-    
-    def release(self):
-        return self.sharedObject.release(), self.transaction, self.sharedObject
+        return put, self.transaction, self.sharedObject, amount
+
         
 class TransactionEntity(Entity):
     """

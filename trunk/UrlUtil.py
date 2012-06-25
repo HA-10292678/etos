@@ -46,17 +46,32 @@ class XmlSource:
         elements, possibly to several XML documents.
         The object provide minimal API of xml.etree.ElementTree.Element objects (find and iterator)
     """
-    def __init__(self, nodes = []):
+    def __init__(self, nodes = None):
         self.elements = []
         self.bases = []
-        for node in nodes:
-            self.append(node)
+        if nodes is None:
+          return
+        if isinstance(nodes, list):
+          for node in nodes:
+              self.append(node)
+        else:
+          for bnode in nodes.iterWithBased:
+            self.append(*bnode)
         
     def find(self, tag):
-        for element in self.elements:
-            if element.find(tag) is not None:
-                return element.find(tag)
+        for element, base in zip(self.elements, self.bases):
+            node = element.find(tag) 
+            if  node is not None:
+                source = XmlSource()
+                source.append(node)
+                return source                
         return None
+      
+    def findNode(self, tag):
+        for element in self.elements:
+          node = element.find(tag)
+          if node is not None:
+            return node
     
     @property
     def commonId(self):
@@ -96,7 +111,11 @@ class XmlSource:
     
     def __iter__(self):
         return itertools.chain(*self.elements)
-
+        
+    def iterWithBased(self):
+      for element, base in zip(self.elements, self.bases):
+        for node in element:
+          yield node, base
 
 def xmlLoader(*args, base=None):
     urls =  []

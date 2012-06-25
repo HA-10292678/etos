@@ -8,7 +8,7 @@ from UrlUtil import xmlLoader
 sim = Etos.Simulation(startTime=float(strdt("0:00:00")))
 sim.initialize()
 
-transactionNode = xmlLoader("XML/gastrans.xml#transaction")
+transactionNode = xmlLoader("XML/gastrans.xml#transaction[@id='starter']")
 t =  Transaction(transactionNode, sim)
 sim.activate(t, t.run(), at = 0)
 

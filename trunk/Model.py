@@ -91,7 +91,63 @@ class Parking (ResourceEntity):
             #FIXME: monotoring 
         return result
         
-class Tanking(LevelEntity):
+class ResourceTanking(SharedEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.refuel= getXValue(xmlSource, "amount", self.xcontext)
+        self.realAmount = 0.0
+        
+    def createSharedObject(self, xmlSource):
+        capacity = getXValue(xmlSource, "capacity", self.simulation.xcontext)
+        
+        self.initialAmount = getXValue(xmlSource, "initialAmount", self.simulation.xcontext)
+        if float(self.initialAmount) > float(capacity):
+            raise Exception("Initial amount greater than capacity")
+        level = Level(capacity=float(capacity),sim=self.simulation)
+        resource = Resource(sim=self.simulation)
+        emptyEvent = SimEvent(sim=self.simulation)
+        lev=SharedObjectsContainer(tank=level,units=resource, emptyEvent=emptyEvent)
+        if float(self.initialAmount)>0:	
+            init = OneShotProcess(self.simulation, self.initAction())
+            self.simulation.activate(init, init.shot())
+        return lev
+    
+    def request(self):
+        return ((request, self.transaction, self.sharedObject.units),
+                (waitevent, self.transaction, self.sharedObject.emptyEvent))
+       
+    def get(self, amount):
+        return get, self.transaction, self.sharedObject.tank
+    
+    def put(self, amount):
+        return put, self.transaction, self.sharedObject.tank
+
+    def release(self):
+        return release, self.transaction, self.sharedObject.units
+        
+    def action(self):
+        if self.sharedObject.tank.amount == 0.0:
+            self.realAmount = 0.0
+            return
+        yield self.request()
+        if not self.transaction.acquired(self.sharedObject.units):
+            return
+        try:
+            if self.sharedObject.tank.amount<float(self.refuel):
+                yield self.get(self.sharedObject.tank.amount)
+                self.realAmount = self.sharedObject.tank.amount
+                self.sharedObject.emptyEvent.signal()
+            else:
+                yield self.get(float(self.refuel))
+                self.realAmount = float(self.refuel)
+            yield self.hold(10)
+        finally:
+            yield self.release()
+        
+    def initAction(self):
+        yield self.put(float(self.initialAmount))
+        
+class SimpleTanking(LevelEntity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.refuel= getXValue(xmlSource, "amount", self.xcontext)
@@ -101,25 +157,13 @@ class Tanking(LevelEntity):
         self.initialAmount = getXValue(xmlSource, "initialAmount", self.simulation.xcontext)
         if float(self.initialAmount) > float(capacity):
             raise Exception("Initial amount greater than capacity")
-        level = Level(capacity=float(capacity),sim=self.simulation)
-        resource=Resource(sim=self.simulation)
-        lev=LevelAdapter(level,resource)
-        if float(self.initialAmount)>0:	
-            init = OneShotProcess(self.simulation, self.initAction())
-            self.simulation.activate(init, init.shot())
-        return lev
-
+        level = Level(capacity=float(capacity), sim=self.simulation)
+        init = OneShotProcess(self.simulation, self.initAction())
+        self.simulation.activate(init, init.shot())
+        return level
+    
     def action(self):
-        yield self.request()
-        if self.sharedObject.patience==False and self.sharedObject.amount<float(self.refuel):
-            yield self.get(self.sharedObject.amount)
-            if len(self.sharedObject.waitQ)!=0:
-                for x in self.sharedObject.waitQ:
-                    self.sharedObject.waitQ.put()
-        else:
-            yield self.get(float(self.refuel))
-        yield self.hold(10)
-        yield self.release()
+        yield self.get(float(self.refuel))
         
     def initAction(self):
         yield self.put(float(self.initialAmount))
@@ -134,34 +178,14 @@ class OneShotProcess(Process):
         yield hold, self, self.delay
         yield next(self.generator)
 
-class UniversalResource(object):
-    def request(self):
-        raise NotImplementedError
-    def release(self):
-        raise NotImplementedError
-    def put(self):
-        raise NotImplementedError
-    def get(self):
-        raise NotImplementedError
+class SharedObjectsContainer:
+    def __init__(self, **kwargs):
+        self.objects = kwargs
+
+    def __getattr__(self, attribute):
+        print(attribute)
+        return self.objects[attribute]
+
     
-class LevelAdapter(UniversalResource):
-    def __init__(self, level, resource, patience=True):
-        self.level=level
-        self.resource=resource
-        self.patience=patience
-    
-    def request(self):
-        return request
-    def release(self):
-        return release
-    def put(self):
-        return put
-    def get(self):
-        return get
-    def __getattr__(self,attr):
-        try:
-            return getattr(self.level,attr)
-        except Exception:
-            return getattr(self.resource,attr)
     
     
