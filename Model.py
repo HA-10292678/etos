@@ -140,7 +140,7 @@ class ResourceTanking(SharedEntity):
             else:
                 yield self.get(float(self.refuel))
                 self.realAmount = float(self.refuel)
-            yield self.hold(10)
+            yield self.hold(300)
         finally:
             yield self.release()
         
@@ -183,7 +183,6 @@ class SharedObjectsContainer:
         self.objects = kwargs
 
     def __getattr__(self, attribute):
-        print(attribute)
         return self.objects[attribute]
 
     
