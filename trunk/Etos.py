@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import SimPy.Simulation
-from SimPy.Simulation import hold
 from XValue import *
 from Collector import Collector
 
@@ -14,6 +13,8 @@ class Simulation (SimPy.Simulation.Simulation):
         self.t = self.xcontext.t
         self.collector = Collector()
         self.tcounter = 0
+        self.returnSignal = SimPy.Simulation.SimEvent("return from subroutines")
+
         
     def __getattr__(self, name):
         if name in self.collector.categories:
