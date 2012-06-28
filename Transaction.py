@@ -24,13 +24,16 @@ def populateEntities(factory, transaction, xmlNode):
     return entities
  
 class Transaction(Process):
-    def __init__(self, transactionXmlNode, simulation, entitiesXmlNode = None , actor = None):
+    def __init__(self,  transactionXmlNode, simulation, tid = None, ppid = None, entitiesXmlNode = None,
+                 actor = None):
         super().__init__(sim=simulation)
         self.simulation = simulation
         try:
             self.entitiesXmlNode = entitiesXmlNode if entitiesXmlNode is not None else XmlSource()
             self.pattern = transactionXmlNode.get("id")
-            self.id = self.simulation.getTId()
+            self.pid = self.simulation.getTId()
+            self.id = tid if tid is not None else self.pid
+            self.ppid = ppid
         
             path, base = transactionXmlNode.getWithBase("entities")
             if path is not None:
@@ -62,7 +65,9 @@ class Transaction(Process):
                     except BaseException as e:
                         print("EXCEPTION : {0}".format(str(e)))
                         traceback.print_exc(file=sys.stderr)
-                        sys.exit()
+                        #sys.exit()
+        if self.ppid is not None:
+            self.simulation.returnSignal.signal(self.ppid)
         
     @staticmethod
     def fromFiles(transactionFile, entitiesFile, simulation):
@@ -128,7 +133,6 @@ class CountedLoop(Loop):
 class StartTransaction(Entity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        print(xmlSource)
         path, base = xmlSource.getWithBase("transactionUrl")
         if path is  None:
             raise Exception("No trans URL")
@@ -141,7 +145,7 @@ class StartTransaction(Entity):
         
         
     def action(self):
-        t = Transaction(self.transactionNode, self.simulation, self.entitiesNode)
+        t = Transaction(self.transactionNode, simulation=self.simulation, entitiesXmlNode=self.entitiesNode)
         self.simulation.activate(t, t.run(), at = 0)  
         
 

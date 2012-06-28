@@ -16,14 +16,9 @@ sim.activate(t, t.run(), at = 0)
 
 sim.simulate(until=int(DayTime(days=3)))
 
-for transaction in sim.tanking.keys():
-    print("{0}:mean={1.mean}".format(transaction,sim.tanking[transaction]),file=sys.stderr)  
+#for transaction in sim.tanking.keys():
+#    print("{0}:mean={1.mean}".format(transaction,sim.tanking[transaction]),file=sys.stderr)  
 
 
-#print("mean: " + dtstr(sim.totalDuration.mean))
-#print("stdvar: " + dtstr(sim.totalDuration.standardDeviation))
-#print("min: " + dtstr(sim.totalDuration.min))
-#print("max: " + dtstr(sim.totalDuration.max))
-#print(sim.tStarted)
-#print(sim.tFinished)
+
     
