@@ -172,9 +172,7 @@ class SubTransaction(TransactionEntity):
             finishedSubtrans = self.simulation.returnSignal.signalparam
 
 class EntityFactory:
-    stdMapping = dict(connection=Connection, pause=Pause, refuel=FuelStation, tank=SimpleTanking,
-                      rtank=ResourceTanking,
-                      checkpoint = Checkpoint, parking = Parking, infinity_loop = InfinityLoop,
+    stdMapping = dict(checkpoint = Checkpoint, infinity_loop = InfinityLoop,
                       counted_loop = CountedLoop, start_transaction = StartTransaction,
                       transaction = SubTransaction)
     def __init__(self, entityNode, mapping = None):
@@ -182,6 +180,18 @@ class EntityFactory:
             mapping = EntityFactory.stdMapping
         self.mapping = mapping
         self.root = entityNode
+        
+    @staticmethod
+    def register(cls, tagName=None):
+        tagName = tagName if tagName is not None else cls.tag
+        EntityFactory.stdMapping[tagName] = cls
+        
+    @staticmethod    
+    def registerModule(module):
+        for cls in module.__dict__.values():
+            if hasattr(cls, "tag"):
+                EntityFactory.register(cls)
+                
         
     def createFromXml(self, transactionNode, transaction, base = None):
         eType = transactionNode.tag
