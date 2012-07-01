@@ -153,6 +153,7 @@ class ResourceTanking(SharedEntity):
             yield self.put(float(self.initialAmount))
         
 class SimpleTanking(LevelEntity):
+    tag = "tank"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.refuel= getXValue(xmlSource, "amount", self.xcontext)
