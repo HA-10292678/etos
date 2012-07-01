@@ -4,6 +4,7 @@ from SimPy.Simulation import *
 from Entity import *
 
 class FuelStation(ResourceEntity):
+    tag = "refuel"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         
@@ -21,6 +22,7 @@ class Connection(TransactionEntity):
     """
         Simulation of simple passage from point A to B
     """
+    tag = "connection"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.distance = getXValue(xmlSource, "distance", self.xcontext)
@@ -34,6 +36,7 @@ class Pause(TransactionEntity):
     """
     Simulation of simple pause with specified duration.
     """
+    tag = "pause"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.duration = getXValue(xmlSource, "duration", self.xcontext)
@@ -60,6 +63,7 @@ class Parking (ResourceEntity):
         Simulation of parking lot with limited number of parking places (capacity) and limited
         waiting time, if the parking lot is full.
     """
+    tag = "parking"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.alarm = None
@@ -92,6 +96,7 @@ class Parking (ResourceEntity):
         return result
         
 class ResourceTanking(SharedEntity):
+    tag = "rtank"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.refuel= getXValue(xmlSource, "amount", self.xcontext)
