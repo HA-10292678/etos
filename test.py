@@ -14,7 +14,7 @@ transactionNode = xmlLoader("XML/gastrans.xml#transaction[@id='starter']")
 t =  Transaction(transactionNode, sim)
 sim.activate(t, t.run(), at = 0)
 
-sim.simulate(until=int(DayTime(days=3)))
+sim.simulate(until=int(DayTime(days=1)))
 
 #for transaction in sim.tanking.keys():
 #    print("{0}:mean={1.mean}".format(transaction,sim.tanking[transaction]),file=sys.stderr)  

@@ -86,8 +86,7 @@ class ControlEntity(Entity):
     
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
-        self.subentities = populateEntities(factory, self.transaction,
-                                            self.xmlSource.find("transaction"))
+        self.subentities = populateEntities(factory, self.transaction, self.xmlSource)
      
 class Loop(ControlEntity):
     def __init__(self, transaction, xmlSource):
@@ -129,31 +128,55 @@ class CountedLoop(Loop):
         self.count += 1
         return self.count <= self.limit
             
-        
-class StartTransaction(Entity):
+
+class TransactionEntity(Entity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        path, base = xmlSource.getWithBase("transactionUrl")
-        if path is  None:
-            raise Exception("No trans URL")
-        self.transactionNode = xmlLoader(path, base=base)
-        path, base = xmlSource.getWithBase("entityUrl")
-        if path is None:
-            self.entitiesNode = XmlSource([self.transaction.entitiesXmlNode])
+        if xmlSource.get("transactionUrl") is not None:
+            path, base = xmlSource.getWithBase("transactionUrl")
+            if path is  None:
+                raise Exception("No trans URL")
+            self.transactionNode = xmlLoader(path, base=base)
+            path, base = xmlSource.getWithBase("entityUrl")
+            if path is None:
+                self.entitiesNode = XmlSource([self.transaction.entitiesXmlNode])
+            else:
+                self.entitiesNode = xmlLoader(path, base=base)
         else:
-            self.entitiesNode = xmlLoader(path, base=base)
+            self.transactionNode = xmlSource
+            self.entitiesNode = XmlSource([self.transaction.entitiesXmlNode])
+
         
+class StartTransaction(TransactionEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+       
         
     def action(self):
-        t = Transaction(self.transactionNode, simulation=self.simulation, entitiesXmlNode=self.entitiesNode)
-        self.simulation.activate(t, t.run(), at = 0)  
+        t = Transaction(self.transactionNode, simulation=self.simulation,
+                        entitiesXmlNode=self.entitiesNode, actor = self.transaction.actor)
+        self.simulation.activate(t, t.run(), at = 0)
         
+class SubTransaction(TransactionEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+            
+    def action(self):
+        t = Transaction(self.transactionNode, simulation=self.simulation,
+                        tid = self.transaction.id, ppid = self.transaction.pid,
+                        entitiesXmlNode = self.entitiesNode, actor = self.transaction.actor)
+        self.simulation.activate(t, t.run(), at = 0)
+        finishedSubtrans = -1
+        while finishedSubtrans != self.transaction.pid:
+            yield waitevent, self.transaction, self.simulation.returnSignal
+            finishedSubtrans = self.simulation.returnSignal.signalparam
 
 class EntityFactory:
     stdMapping = dict(connection=Connection, pause=Pause, refuel=FuelStation, tank=SimpleTanking,
                       rtank=ResourceTanking,
                       checkpoint = Checkpoint, parking = Parking, infinity_loop = InfinityLoop,
-                      counted_loop = CountedLoop, start_transaction = StartTransaction)
+                      counted_loop = CountedLoop, start_transaction = StartTransaction,
+                      transaction = SubTransaction)
     def __init__(self, entityNode, mapping = None):
         if mapping is None:
             mapping = EntityFactory.stdMapping
