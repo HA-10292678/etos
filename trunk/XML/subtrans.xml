@@ -1,0 +1,19 @@
+<transaction id="main transaction">
+        <infinity_loop>
+            <transaction>
+            <checkpoint>
+                <measure property="t.id" category="subtrans started" type="log"></measure>
+                <measure property="t.pid" category="subtrans started" type="log"></measure>
+                <measure property="t.ppid" category="subtrans started" type="log"></measure>                
+            </checkpoint>
+            <pause><duration>3600</duration></pause>
+            <checkpoint>
+                <measure property="t.id" category="subtrans finished" type="log"></measure>
+                <measure property="t.pid" category="subtrans finished" type="log"></measure>
+                <measure property="t.ppid" category="subtrans finished" type="log"></measure>                
+            </checkpoint>            
+            </transaction>
+            <pause><duration>3600</duration></pause>            
+        </infinity_loop>
+</transaction>
+
