@@ -2,6 +2,7 @@
 
 from SimPy.Simulation import *
 from Entity import *
+from XValue import *
 
 class FuelStation(ResourceEntity):
     tag = "refuel"

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import SimPy.Simulation
+import Transaction
+import Entity
+from UrlUtil import xmlLoader
 from XValue import *
 from Collector import Collector
 
@@ -14,7 +17,14 @@ class Simulation (SimPy.Simulation.Simulation):
         self.collector = Collector()
         self.tcounter = 0
         self.returnSignal = SimPy.Simulation.SimEvent("return from subroutines", sim=self)
+        self.initialize()
 
+
+    def start(self, transaction, duration = 0xFFFFFFFF):
+        if isinstance(transaction, str):
+            transaction = Transaction.Transaction(xmlLoader(transaction), self)
+        self.activate(transaction, transaction.run())
+        self.simulate(until=int(duration))
         
     def __getattr__(self, name):
         if name in self.collector.categories:
@@ -25,6 +35,9 @@ class Simulation (SimPy.Simulation.Simulation):
     def getTId(self):
         self.tcounter += 1
         return self.tcounter
+    
+def registerModule(module):
+    Transaction.EntityFactory.registerModule(module)
 
     
 

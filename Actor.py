@@ -1,14 +1,22 @@
 from XValue import *
 
 class Actor:
-    def __init__(self, transaction):
-        self.xcontext = XValueContext()
-        self.transaction = transaction
-        self.simulation = self.transaction.simulation
+    def __init__(self, simulation, xmlSource, extraProperties = False):
+        self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)
+        self.simulation = simulation
+        self.xmlSource = xmlSource
+        self.startTime = self.simulation.now()
+        self.props = {}
+        if extraProperties:
+            for element in xmlSource:
+                tag = element.tag
+                self.props[tag] = getXValue(xmlSource, tag, self.xcontext)
         
-class E_car(Actor):
-    def __init__(self, transaction):
-        super().__init__(transaction)
+    def __str__(self):
+        return ",".join(self.props.keys())
+
+        
+        
 
 
 
