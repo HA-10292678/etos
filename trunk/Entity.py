@@ -16,66 +16,6 @@ class EntityError:
     def __init__(self, msg):
         super().__init__()
 
-def getXValue(xmlSource, tag, context):
-    node = xmlSource.findNode(tag)
-    if node is None:
-        raise InvalidXMLException("undefined attribute {0}".format(tag))
-    subNode = node.find("*")
-    if subNode is None:
-        ntext = node.text.strip() 
-        if ntext != "":
-            if(all(c in "0123456789" for c in ntext)):
-                return XValue(int(ntext), context)
-            else:
-                return XValue(float(ntext), context)
-        else:
-            raise InvalidXMLException("empty attribute value")
-    if subNode.tag == "normal":
-        mu = float(subNode.get("mu", 0.0))
-        sigma = float(subNode.get("sigma", 1.0))
-        return XValue(lambda: random.normalvariate(mu, sigma), context)
-    if subNode.tag == "pnormal":
-        mu = float(subNode.get("mu", 0.0))
-        sigma = float(subNode.get("sigma", 1.0))
-        return XValue(lambda: max(random.normalvariate(mu, sigma), 0.0), context)        
-    elif subNode.tag == "uniform":
-        mn = float(subNode.get("min", 0.0)) 
-        mx = float(subNode.get("max", 1.0))
-        return XValue(lambda: random.uniform(mn, mx), context)
-    elif subNode.tag == "triangular":
-        low = float(subNode.get("low", 0.0)) 
-        high = float(subNode.get("high", 1.0))
-        mode = float(subNode.get("mode", 1.0))
-        return XValue(lambda: random.triangular(low, high, mode), context)
-    elif subNode.tag == "beta":
-        alpha = float(subNode.get("alpha", 0.0)) 
-        beta = float(subNode.get("beta", 1.0))
-        return XValue(lambda: random.betavariate(alpha, beta), context)
-    elif subNode.tag == "gamma":
-        alpha = float(subNode.get("alpha", 0.0)) 
-        beta = float(subNode.get("beta", 1.0))
-        return XValue(lambda: random.gammavariate(alpha, beta), context)
-    elif subNode.tag == "lognormal":
-        mu = float(subNode.get("mu", 0.0))
-        sigma = float(subNode.get("sigma", 1.0))
-        return XValue(lambda: random.lognormvariate(mu, sigma), context)
-    elif subNode.tag == "vonmises":
-        mu = float(subNode.get("mu", 0.0))
-        kappa = float(subNode.get("kappa", 1.0))
-        return XValue(lambda: random.vonmisesvariate(mu, kappa), context)
-    elif subNode.tag == "pareto":
-        alpha = float(subNode.get("alpha", 0.0))
-        return XValue(lambda: random.paretovariate(alpha), context)
-    elif subNode.tag == "weibull":
-        alpha = float(subNode.get("alpha", 0.0)) 
-        beta = float(subNode.get("beta", 1.0))
-        return XValue(lambda: random.weibullvariate(alpha, beta), context)
-    elif subNode.tag == "exponential":
-        lamda = float(subNode.get("lambda", 1.0))
-        return XValue(lambda: random.expovariate(lamda), context)
-    else:
-        raise InvalidXMLException("unsupported attribute value")
-
 
 class Entity:
     def __init__(self, transaction, xmlSource):
@@ -211,6 +151,10 @@ class Checkpoint(TransactionEntity):
         obj = None
         if prop[0] == "a":
             obj = self.transaction.actor
+            if(hasattr(obj,prop[1])):
+                return getattr(obj, prop[1])
+            else:
+                return obj.props[prop[1]]
         if prop[0] == "t":
             obj = self.transaction
         elif prop[0] == "s":

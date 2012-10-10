@@ -2,16 +2,18 @@
 
 from SimPy.Simulation import *
 from UrlUtil import xmlLoader, XmlSource
-from XValue import XValueContext
+from XValue import *
 import uuid
 import traceback
 import sys
 
 from Entity import *
 from Model import *
+from Actor import Actor
  
 def populateEntities(factory, transaction, xmlNode):
-    entities = [factory.createFromXml(node, transaction, base) for node,base in xmlNode.iterWithBased()]
+    entities = [factory.createFromXml(node, transaction, base)
+                    for node,base in xmlNode.iterWithBased()]
     for i in range(len(entities)):
         if not isinstance(entities[i], Checkpoint) or entities[i].referedEntity is None:
             continue
@@ -21,6 +23,11 @@ def populateEntities(factory, transaction, xmlNode):
             entities[i].referedEntity = entities[i+1]
         else:
             raise Exception("Invalid referention to refered entity [checkpoint]")
+    return entities
+
+def populateSubTransactions(factory, transaction, xmlNode):
+    entities = [factory.createFromXml(node, transaction, base)
+                    for node,base in xmlNode.iterWithBased() if node.tag == "transaction"]
     return entities
  
 class Transaction(Process):
@@ -43,7 +50,15 @@ class Transaction(Process):
             self.startTime = None
             self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)
             self.t = self.xcontext.t
-            self.actor = actor
+            if actor is not None:
+                self.actor = actor
+            else:
+                path, base = transactionXmlNode.getWithBase("actor")
+                if path is not None:
+                    self.actor = Actor(self.simulation, xmlLoader(path, base=base),
+                                       extraProperties = True)
+                else:
+                    self.actor = Actor(self.simulation, XmlSource())
         except Exception as e:
             print(e)
             traceback.print_exc(file=sys.stderr)
@@ -86,7 +101,7 @@ class ControlEntity(Entity):
     
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
-        self.subentities = populateEntities(factory, self.transaction, self.xmlSource)
+        self.subentities = populateSubTransactions(factory, self.transaction, self.xmlSource)
      
 class Loop(ControlEntity):
     def __init__(self, transaction, xmlSource):
@@ -154,7 +169,7 @@ class StartTransaction(TransactionEntity):
         
     def action(self):
         t = Transaction(self.transactionNode, simulation=self.simulation,
-                        entitiesXmlNode=self.entitiesNode, actor = self.transaction.actor)
+                        entitiesXmlNode=self.entitiesNode, actor = None)
         self.simulation.activate(t, t.run(), at = 0)
         
 class SubTransaction(TransactionEntity):
@@ -171,9 +186,12 @@ class SubTransaction(TransactionEntity):
             yield waitevent, self.transaction, self.simulation.returnSignal
             finishedSubtrans = self.simulation.returnSignal.signalparam
 
+  
 class EntityFactory:
-    stdMapping = dict(checkpoint = Checkpoint, infinity_loop = InfinityLoop,
-                      counted_loop = CountedLoop, start_transaction = StartTransaction,
+    stdMapping = dict(checkpoint = Checkpoint,
+                      infinity_loop = InfinityLoop,
+                      counted_loop = CountedLoop,
+                      start_transaction = StartTransaction,
                       transaction = SubTransaction)
     def __init__(self, entityNode, mapping = None):
         if mapping is None:
@@ -205,6 +223,5 @@ class EntityFactory:
         entity = self.mapping[eType](transaction, source)
         if isinstance(entity, ControlEntity):
             entity.populateSubEntities(self.root)
-        return entity    
-    
+        return entity      
 
