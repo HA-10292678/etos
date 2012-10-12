@@ -6,6 +6,7 @@ import random
 from Collector import Collector
 import sys
 from TimeUtil import *
+from PropertyGetter import Property
 
 class InvalidXMLException(Exception):
     "invalid structure in XML input data"
@@ -112,8 +113,8 @@ class Measure:
     """
     def __init__(self, measureNode):
         self.propSpec = measureNode.get("property")
-        self.property = tuple(self.propSpec.split("."))
-        self.key = tuple(measureNode.get("key").split(".")) if "key" in measureNode.attrib else None
+        self.property = Property(self.propSpec)
+        self.key = Property(measureNode.get("key")) if "key" in measureNode.attrib else None
         self.category = measureNode.get("category", self.propSpec)
         self.kind = Collector.types.index(measureNode.get("type"))
     
@@ -131,10 +132,10 @@ class Checkpoint(TransactionEntity):
     def action(self):
         yield self.hold(0)
         for measure in self.measures:
-            prop = self._getProperty(measure.property)
+            prop = measure.property.get(self.transaction, self.referedEntity)
             key = None
             if measure.key is not None:
-                key = self._getProperty(measure.key)
+                key = measure.key.get(self.transaction, self.referedEntity)
             if measure.kind == Collector.LOG:
                 keystr = "({0})".format(key) if key is not None else ""
                 print("{0}: {1} {2}={3} {4}"
@@ -146,23 +147,4 @@ class Checkpoint(TransactionEntity):
                       file=sys.stderr)    
             else:
                 self.simulation.collector.collect(measure.category, prop, measure.kind, key)
-            
-    def _getProperty(self, prop):
-        obj = None
-        if prop[0] == "a":
-            obj = self.transaction.actor
-            if(hasattr(obj,prop[1])):
-                return getattr(obj, prop[1])
-            else:
-                return obj.props[prop[1]]
-        if prop[0] == "t":
-            obj = self.transaction
-        elif prop[0] == "s":
-            obj = self.simulation
-        elif prop[0] == "e":
-            obj = self.referedEntity
-        elif prop[0] == "eso":
-            obj = self.referedEntity.sharedObject
-        return getattr(obj, prop[1])
-            
-                    
+                 

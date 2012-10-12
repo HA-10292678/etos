@@ -3,9 +3,11 @@
 from SimPy.Simulation import *
 from UrlUtil import xmlLoader, XmlSource
 from XValue import *
+from PropertyGetter import Property
 import uuid
 import traceback
 import sys
+import random
 
 from Entity import *
 from Model import *
@@ -92,12 +94,11 @@ class Transaction(Process):
         
 class ControlEntity(Entity):
     """
-        Abstract base class for entity, which control some subentities
+        Abstract base class for entity, which control some subtransactions
     """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.xmlSource = xmlSource
-        self.subentities = None 
     
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
@@ -108,23 +109,25 @@ class Loop(ControlEntity):
         super().__init__(transaction, xmlSource)
     
     def action(self):
+        assert len(self.subentities) == 1
         while self.test():
-            for entity in self.subentities:
-                with entity.xcontext:
-                    i = iter(entity.action())
-                    while True:
-                        try:
-                            event = next(i)
-                            yield event
-                        except StopIteration:
-                            break
-                        except BaseException as e:
-                            print("EXCEPTION : {0}".format(str(e)))
-                            traceback.print_exc(file=sys.stderr)
-                            sys.exit()
+            entity = self.subentities[0]
+            with entity.xcontext:
+                i = iter(entity.action())
+                while True:
+                    try:
+                        event = next(i)
+                        yield event
+                    except StopIteration:
+                        break
+                    except BaseException as e:
+                        print("EXCEPTION : {0}".format(str(e)))
+                        traceback.print_exc(file=sys.stderr)
+                        sys.exit()
     
     def test(self):
         raise NotImplementedError("Abstract method")
+     
      
 class InfinityLoop (Loop):
     def __init__(self, transaction, xmlSource):
@@ -142,7 +145,86 @@ class CountedLoop(Loop):
     def test(self):
         self.count += 1
         return self.count <= self.limit
+    
+    
+class While(Loop):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.property = Property(xmlSource.get("property")) 
+    
+    def test(self):
+        return bool(self.property.get(self.transaction, self))
+
+    
+class WhileInRange(Loop):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.property = Property(xmlSource.get("property")) 
+        self.minimum = float(getXValue(xmlSource, "minimum", self.xcontext))
+        self.maximum = float(getXValue(xmlSource, "maximum", self.xcontext))
+        
+    def test(self):
+        value = float(self.property.get(self.transaction, self))
+        return self.minimum <= value <= self.maximum
             
+            
+class Branching(ControlEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+    
+    def action(self):
+        assert len(self.subentities) in (1,2)
+        if self.test():
+            entity = self.subentities[0]
+        elif len(self.subentities) == 2:
+            entity = self.subentities[1]
+        else:
+            return
+            
+        with entity.xcontext:
+            i = iter(entity.action())
+            while True:
+                try:
+                    event = next(i)
+                    yield event
+                except StopIteration:
+                    break
+                except BaseException as e:
+                    print("EXCEPTION : {0}".format(str(e)))
+                    traceback.print_exc(file=sys.stderr)
+                    sys.exit()
+    
+    def test(self):
+        raise NotImplementedError("Abstract method")
+    
+class WithProbability(Branching):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.probability = float(getXValue(xmlSource, "probability", self.xcontext))
+        
+    def test(self):
+        x = random.random()
+        return x  < self.probability
+    
+class If(Branching):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.property = Property(xmlSource.get("property")) 
+    
+    def test(self):
+        return bool(self.property.get(self.transaction, self))
+    
+class IfInRange(Branching):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.property = Property(xmlSource.get("property")) 
+        self.minimum = float(getXValue(xmlSource, "minimum", self.xcontext))
+        self.maximum = float(getXValue(xmlSource, "maximum", self.xcontext))
+        
+    def test(self):
+        value = float(self.property.get(self.transaction, self))
+        return self.minimum <= value <= self.maximum    
+    
 
 class TransactionEntity(Entity):
     def __init__(self, transaction, xmlSource):
@@ -188,11 +270,14 @@ class SubTransaction(TransactionEntity):
 
   
 class EntityFactory:
-    stdMapping = dict(checkpoint = Checkpoint,
+    stdMapping = dict({ "if" : If, "while" : While, "with" : WithProbability},
+                      checkpoint = Checkpoint,
                       infinity_loop = InfinityLoop,
                       counted_loop = CountedLoop,
                       start_transaction = StartTransaction,
-                      transaction = SubTransaction)
+                      transaction = SubTransaction,
+                      while_in_range = WhileInRange,
+                      if_in_range = IfInRange)
     def __init__(self, entityNode, mapping = None):
         if mapping is None:
             mapping = EntityFactory.stdMapping
