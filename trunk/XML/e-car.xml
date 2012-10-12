@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<model>
+	<transaction id="starter">
+		<counted_loop>
+			<count>2</count>
+			<transaction>
+				<start_transaction transactionUrl="#transaction[@id='route']"/>
+			</transaction>
+		</counted_loop>
+	</transaction>
+	<transaction id="route" entities="#entities" actor="#actor">
+		<checkpoint>
+			<measure property="t.id" category="transaction" type="log"/>
+			<measure property="a.b_energy" category="energy" type="log"/>
+		</checkpoint>
+	</transaction>
+	<entities>
+	</entities>
+	<actor>
+		<b_capacity>1.44e+08</b_capacity>
+		<b_consumption>960</b_consumption>
+		<b_energy>1.44e+08</b_energy>
+	</actor>
+</model>
