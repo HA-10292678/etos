@@ -7,11 +7,6 @@ from Collector import Collector
 import sys
 from TimeUtil import *
 from PropertyGetter import Property
-
-class InvalidXMLException(Exception):
-    "invalid structure in XML input data"
-    def __init__(self, msg):
-        super().__init__(msg)
         
 class EntityError:
     def __init__(self, msg):

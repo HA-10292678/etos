@@ -2,7 +2,9 @@
 
 from Etos import *
 import ECarModel
+import Pause
 
-registerModule(ECarModel)   
+registerModule(ECarModel)
+registerModule(Pause)
 sim = Simulation()
 sim.start("XML/e-car.xml#transaction[@id='starter']")
