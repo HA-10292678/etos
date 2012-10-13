@@ -13,13 +13,13 @@ class DayTime:
         
     @staticmethod
     def fromString(s):
-        match = re.match(r"^\s*(?:(\d+)\s*[dD]\s*)?(\d+)\s*:\s*(\d+)(?:\s*:(\d+))?$", s)
+        match = re.match(r"^\s*(?:(\d+)\s*[dD]\s*)?(\d+)\s*:\s*(\d+)(?:\s*:(\d+(\.\d*)?))?$", s)
         if not match:
             raise Exception("invalid daytime format")
-        d = int(match.group(1)) if match.group(1) is not None else 0
-        h = int(match.group(2))
-        m = int(match.group(3))
-        s = int(match.group(4)) if match.group(4) is not None else 0
+        d = float(match.group(1)) if match.group(1) is not None else 0
+        h = float(match.group(2))
+        m = float(match.group(3))
+        s = float(match.group(4)) if match.group(4) is not None else 0
         return DayTime(days=d, hours=h, minutes=m, seconds=s)         
             
         

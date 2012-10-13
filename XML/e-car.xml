@@ -2,6 +2,9 @@
 
 <model>
 	<transaction id="starter">
+		<pause_to>
+			<time>1d8:00</time>
+		</pause_to>
 		<counted_loop>
 			<count>2</count>
 			<transaction>
@@ -10,6 +13,9 @@
 		</counted_loop>
 	</transaction>
 	<transaction id="route" entities="#entities" actor="#actor">
+		<pause_to period="24:00">
+			<time>2:00:00</time>
+		</pause_to>
 		<checkpoint>
 			<measure property="t.id" category="transaction" type="log"/>
 			<measure property="a.b_energy" category="energy" type="log"/>

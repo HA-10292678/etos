@@ -33,17 +33,6 @@ class Connection(TransactionEntity):
         t = self.distance / self.velocity
         yield self.hold(t)
         
-class Pause(TransactionEntity):
-    """
-    Simulation of simple pause with specified duration.
-    """
-    tag = "pause"
-    def __init__(self, transaction, xmlSource):
-        super().__init__(transaction, xmlSource)
-        self.duration = getXValue(xmlSource, "duration", self.xcontext)
-        
-    def action(self):
-        yield self.hold(self.duration)
         
 class Alarm(Process):
     """
