@@ -12,6 +12,7 @@ import random
 from Entity import *
 from Model import *
 from Actor import Actor
+
  
 def populateEntities(factory, transaction, xmlNode):
     entities = [factory.createFromXml(node, transaction, base)
@@ -68,23 +69,33 @@ class Transaction(Process):
  
     def run(self): #SimPy PEM method
         self.startTime = self.simulation.now()
+        interrupted = False
         for entity in self.entities:
             entity.startTime = self.simulation.now()
             with entity.xcontext:
             # in Python 3.3 could be transfer to "yield from self.action"
-                i = iter(entity.action())
+                generator = entity.action() 
+                i = iter(generator)
                 while True:
                     try:
                         event = next(i)
+                        if event is None:
+                            interrupted = True
+                            break
                         yield event
                     except StopIteration:
                         break
                     except BaseException as e:
                         print("EXCEPTION : {0}".format(str(e)))
                         traceback.print_exc(file=sys.stderr)
-                        #sys.exit()
-        if self.ppid is not None:
-            self.simulation.returnSignal.signal(self.ppid)
+                if interrupted:
+                    break
+        if not self.topLevel:
+            self.simulation.returnSignal.signal((self.ppid, interrupted))
+
+    @property 
+    def topLevel(self):
+        return self.ppid is None
         
     @staticmethod
     def fromFiles(transactionFile, entitiesFile, simulation):
@@ -92,7 +103,7 @@ class Transaction(Process):
         entitiesRoot = ET.parse(entitiesFile).getroot()
         return Transaction(transactionRoot, entitiesRoot, simulation)
         
-class ControlEntity(Entity):
+class ControlEntity(SimpleEntity):
     """
         Abstract base class for entity, which control some subtransactions
     """
@@ -120,6 +131,8 @@ class Loop(ControlEntity):
                         yield event
                     except StopIteration:
                         break
+                    except GeneratorExit:
+                        return
                     except BaseException as e:
                         print("EXCEPTION : {0}".format(str(e)))
                         traceback.print_exc(file=sys.stderr)
@@ -189,6 +202,8 @@ class Branching(ControlEntity):
                     yield event
                 except StopIteration:
                     break
+                except GeneratorExit:
+                    return
                 except BaseException as e:
                     print("EXCEPTION : {0}".format(str(e)))
                     traceback.print_exc(file=sys.stderr)
@@ -226,7 +241,7 @@ class IfInRange(Branching):
         return self.minimum <= value <= self.maximum    
     
 
-class TransactionEntity(Entity):
+class TransactionEntity(SimpleEntity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         if xmlSource.get("transactionUrl") is not None:
@@ -266,18 +281,45 @@ class SubTransaction(TransactionEntity):
         finishedSubtrans = -1
         while finishedSubtrans != self.transaction.pid:
             yield waitevent, self.transaction, self.simulation.returnSignal
-            finishedSubtrans = self.simulation.returnSignal.signalparam
+            finishedSubtrans = self.simulation.returnSignal.signalparam[0]
+            interrupted = self.simulation.returnSignal.signalparam[1]
+        if interrupted:
+            try:
+                yield None
+            except GeneratorExit:
+                return
 
+class ExitTransaction(SimpleEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        
+    def action(self):
+        try:
+            yield None
+        except GeneratorExit:
+            return
+        
+class StopSimulation(SimpleEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        
+    def action(self):
+        yield self.hold(0)
+        self.simulation.stopSimulation()
+    
   
 class EntityFactory:
     stdMapping = dict({ "if" : If, "while" : While, "with" : WithProbability},
                       checkpoint = Checkpoint,
+                      trace = Trace,
                       infinity_loop = InfinityLoop,
                       counted_loop = CountedLoop,
                       start_transaction = StartTransaction,
                       transaction = SubTransaction,
                       while_in_range = WhileInRange,
-                      if_in_range = IfInRange)
+                      if_in_range = IfInRange,
+                      exit = ExitTransaction,
+                      stop_simulation = StopSimulation)
     def __init__(self, entityNode, mapping = None):
         if mapping is None:
             mapping = EntityFactory.stdMapping
