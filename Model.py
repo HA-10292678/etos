@@ -19,7 +19,7 @@ class FuelStation(ResourceEntity):
         yield self.release()
 
 
-class Connection(TransactionEntity):
+class Connection(SimpleEntity):
     """
         Simulation of simple passage from point A to B
     """

@@ -77,7 +77,7 @@ class LevelEntity (SharedEntity):
         return put, self.transaction, self.sharedObject, amount
 
         
-class TransactionEntity(Entity):
+class SimpleEntity(Entity):
     """
         Base class for simple entities which don't use shared resource (i.e. per transaction entity)
     """
@@ -113,7 +113,7 @@ class Measure:
         self.category = measureNode.get("category", self.propSpec)
         self.kind = Collector.types.index(measureNode.get("type"))
     
-class Checkpoint(TransactionEntity):
+class Checkpoint(SimpleEntity):
     """
     Auxiliary entity for collecting properties of simulated system.
     Collected values and mechanisms of collecting are specified by measure subelements
@@ -142,4 +142,12 @@ class Checkpoint(TransactionEntity):
                       file=sys.stderr)    
             else:
                 self.simulation.collector.collect(measure.category, prop, measure.kind, key)
-                 
+                
+class Trace(SimpleEntity):
+    def __init__(self, transaction, xmlSource):
+       super().__init__(transaction, xmlSource)
+       self.text = xmlSource.get("text", "trace")
+       
+    def action(self):
+        yield self.hold(0)
+        print("{0}:: {1}".format(dtstr(self.simulation.t),self.text),file=sys.stderr)

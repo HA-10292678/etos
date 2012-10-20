@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from Entity import TransactionEntity
+from Entity import SimpleEntity
 from XValue import getXValue, number
 from PropertyGetter import Property
 import math
 
-class Pause(TransactionEntity):
+class Pause(SimpleEntity):
     """
     Simulation of simple pause with specified duration.
     """
@@ -18,7 +18,7 @@ class Pause(TransactionEntity):
         yield self.hold(self.duration)
         
         
-class PauseTo(TransactionEntity):
+class PauseTo(SimpleEntity):
     tag = "pause_to"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
