@@ -1,0 +1,56 @@
+Work = Pause
+Rozhodnutí = WithProbability
+
+TestVybití
+parametr = procentuálníMez (0.05)
+           prodlení
+if klesne pod mez = čekání, nabije minumum
+
+FastCharging
+	stationCapacity (LevelEntity)
+        shopTime 
+	waitTime
+        charging
+
+	čekat max WaitTime
+     	pokud získá -> nabíjet shopTime (ale jen do 100%)
+	pokud ne -> čeká shopTime
+
+
+
+HomeCharging (mírně vylepšená PauseTo)
+	charging
+        startTime (odjezd z domova) 
+	 
+nabíjení -> do doby startime se čeká a pak se spočítí kolik se nabilo
+
+<pauseTo><time>8:00</time>
+<infinity_loop>
+	<route>
+	<test_nabiti/>
+	<work>
+	<with_probability>
+                <transaction>
+			<route>
+			<test-nabiti>
+                </transaction>
+		<transaction>
+                 	<route>
+			<test-nabiti>
+			<fastCharging>
+			<route>
+			<test-nabiti>
+                </transaction>
+       </with_probability>
+       <homeCharging/>	
+</infinity_loop>
+
+
+
+
+
+
+
+	 
+
+
