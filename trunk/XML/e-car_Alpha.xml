@@ -29,6 +29,7 @@
 				<checkpoint>
 					<measure property="t.id" category="transaction" type="log"/>
 					<measure property="a.b_energy" category="energy" type="log"/>
+					<measure property="e.actualEnergy" category="energy" type="log"/>
 				</checkpoint>
 				<with>
 					<probability>0.5</probability>
@@ -39,17 +40,28 @@
 						<checkpoint>
 							<measure property="t.id" category="transaction" type="log"/>
                                                         <measure property="a.b_energy" category="energy" type="log"/>
+							<measure property="e.actualEnergy" category="energy" type="log"/>
 						</checkpoint>
 					</transaction>
                                         <transaction>
                                             <route id="r2">
                                                 <distance><normal mu="1500" sigma="110"/></distance>
                                             </route>
+					    <checkpoint>
+							<measure property="t.id" category="transaction" type="log"/>
+                                                        <measure property="a.b_energy" category="energy" type="log"/>
+							<measure property="e.actualEnergy" category="energy" type="log"/>
+						</checkpoint>
                                             <fastCharging id="STATION1">
                                                 <shopTime>5000</shopTime>
                                                 <maxWaiting>120</maxWaiting>
                                             </fastCharging>
                                             <route id="r3"><distance><normal mu="2500" sigma="200"/></distance></route>
+					    <checkpoint>
+							<measure property="t.id" category="transaction" type="log"/>
+                                                        <measure property="a.b_energy" category="energy" type="log"/>
+							<measure property="e.actualEnergy" category="energy" type="log"/>
+						</checkpoint>
                                         </transaction>
 				</with>
                                 <homeCharging>
