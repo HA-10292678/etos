@@ -163,6 +163,123 @@ class SimpleTanking(LevelEntity):
         
     def initAction(self):
         yield self.put(float(self.initialAmount))
+    
+class HomeCharging(LevelEntity):
+    tag = "HomeCharging"
+    def __init__(self,transaction,xmlSource):
+        super.__init__(transaction,xmlSource)
+        self.batCap=getXValue(xmlSource,"b_capacity",self.xcontext)
+        self.energy=getXValue(xmlSource,"b_energy",self.xcontext) 
+        self.current=10
+        self.epoch = Property(xmlSource.get("epoch", "s.t"))
+        self.period = xmlSource.get("period", None)
+        if self.period is not None:
+            self.period = number(self.period)
+        self.time = getXValue(xmlSource, "time", self.xcontext)
+        if self.period is not None:
+            assert self.time < self.period
+        assert 0 <= self.time
+    
+    def createSharedObject(self, xmlSource):
+        level = Level(sim=self.simulation)
+        return level
+    
+    def action(self):
+        ptime = self.time
+        atime = float(self.epoch.get(self.transaction, self))
+        if self.period is not None:
+            comper = math.floor(atime / self.period)
+            start = comper * self.period
+            rem = atime - start
+            if ptime < rem:
+                start += self.period
+            ptime = start + ptime
+            
+        duration = ptime - atime 
+        amount=duration*self.current
+        yield self.get(amount>self.batCap if self.batCap else amount)
+        yield self.put(amount>self.batCap if self.batCap else amount)
+        yield self.hold(float(duration))
+
+
+    
+class FastCharging(SharedEntity):
+    tag="FastCharging"
+    def __init__(self,transaction,xmlSource):
+        super.__init__(transaction,xmlSource)
+        self.batCap=getXValue(xmlSource,"b_capacity",self.xcontext)
+        self.energy=getXValue(xmlSource,"b_energy",self.xcontext)
+        self.maxWaiting=getXValue(xmlSource,"maxWaiting",self.xcontext)
+        self.duration=getXValue(xmlSource,"duration",self.xcontext)
+        self.current=32
+    
+    def createSharedObject(self, xmlSource):
+        capacity=getXValue(xmlSource,"capacity",self.xcontext)
+        level = Level(sim=self.simulation)
+        resource = Resource(capacity=capacity,sim=self.simulation)
+        emptyEvent = SimEvent(sim=self.simulation)
+        lev=SharedObjectsContainer(tank=level,units=resource,emptyEvent=emptyEvent)
+        return lev
+    
+    def request(self):
+        return ((request, self.transaction, self.sharedObject.units),
+                (waitevent, self.transaction, self.sharedObject.emptyEvent))
+       
+    def get(self, amount):
+        return get, self.transaction, self.sharedObject.tank, amount
+    
+    def put(self, amount):
+        return put, self.transaction, self.sharedObject.tank, amount
+
+    def release(self):
+        return release, self.transaction, self.sharedObject.units
+    
+    def action(self):
+        self.alarm = Alarm(self.transaction)
+        self.simulation.activate(self.alarm, self.alarm.wakeup(delay=float(self.maxWaiting)))
+        yield self.request()
+        if self.gotResource():
+            amount=self.duration*self.current
+            yield self.get(amount>self.batCap if self.batCap else amount)
+            yield self.put(amount>self.batCap if self.batCap else amount)
+            yield self.hold(float(self.duration))
+            yield self.release()
+        else:
+            yield self.hold(self.duration)
+    
+    def gotResource(self): #(c) http://simpy.sourceforge.net/reneging.htm
+        """Tests whether the resource has been acquired"""
+        result=self.transaction in self.sharedObject.activeQ
+        if result:
+            #Acquired, so cancel alarm
+            self.transaction.cancel(self.alarm)
+        else:
+            #not acquired, so get out of queue, renege
+            self.sharedObject.waitQ.remove(self.transaction)
+            #FIXME: monotoring 
+        return result
+
+class Route(LevelEntity):
+    tag = "Route"
+    def __init__(self,transaction,xmlSource):
+        super().__init__(transaction,xmlSource)
+        self.distance=getXValue(xmlSource,"distance",self.xcontext)
+        self.energy=getXValue(xmlSource,"b_energy",self.xcontext)
+        self.consumption=getXValue(xmlSource,"b_consumption",self.xcontext)
+        self.limit=getXValue(xmlSource,"limit",self.xcontext)
+        self.delay=getXValue(xmlSource,"delay",self.xcontext)
+    
+    def createSharedObject(self, xmlSource):
+        lev = Level(sim=self.simulation)
+        return lev
+    
+    def action(self):
+        actualEnergy=self.consumption*distance
+        if (self.actualEnergy<self.limit):
+            yield self.hold(float(self.delay))
+            actualEnergy=2*self.limit
+            yield self.get(-actualEnergy)
+            yield self.put(-actualEnergy)
         
 class OneShotProcess(Process):
     def __init__(self, simulation, generator, delay = 0.0):
