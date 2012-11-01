@@ -268,13 +268,14 @@ class Route(LevelEntity):
         self.consumption=getXValue(xmlSource,"b_consumption",self.xcontext)
         self.limit=getXValue(xmlSource,"limit",self.xcontext)
         self.delay=getXValue(xmlSource,"delay",self.xcontext)
+        self.actualEnergy=0.0
     
     def createSharedObject(self, xmlSource):
         lev = Level(sim=self.simulation)
         return lev
     
     def action(self):
-        actualEnergy=self.consumption*distance
+        actualEnergy=self.energy-self.consumption*distance
         if (self.actualEnergy<self.limit):
             yield self.hold(float(self.delay))
             actualEnergy=2*self.limit
