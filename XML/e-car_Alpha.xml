@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<model>
+	<transaction id="starter">
+		<pause_to>
+			<time>8:00</time>
+		</pause_to>
+		<start_transaction>
+			<pause><duration>120:00</duration></pause>
+			<trace text="simulation stopped"/>
+			<stop_simulation/>
+		</start_transaction>
+		<infinity_loop>
+			<transaction>
+				<start_transaction transactionUrl="#transaction[@id='route']"/>
+			</transaction>
+		</infinity_loop>
+	</transaction>
+	<transaction id="route" entities="#entities" actor="#actor">
+		<infinity_loop>
+			<transaction>
+                                <route id="r0">
+                                    <distance><normal mu="1000" sigma="100"/></distance>
+                                </route>
+                                
+				<pause_to period="24:00">
+					<time>8:00:00</time>
+				</pause_to>
+				<checkpoint>
+					<measure property="t.id" category="transaction" type="log"/>
+					<measure property="a.b_energy" category="energy" type="log"/>
+				</checkpoint>
+				<with>
+					<probability>0.5</probability>
+					<transaction>
+                                            <route id="r1">
+                                                <distance><normal mu="1000" sigma="100"/></distance>
+                                            </route>
+						<checkpoint>
+							<measure property="t.id" category="transaction" type="log"/>
+                                                        <measure property="a.b_energy" category="energy" type="log"/>
+						</checkpoint>
+					</transaction>
+                                        <transaction>
+                                            <route id="r2">
+                                                <distance><normal mu="1500" sigma="110"/></distance>
+                                            </route>
+                                            <fastCharging id="STATION1">
+                                                <shopTime>5000</shopTime>
+                                                <maxWaiting>120</maxWaiting>
+                                            </fastCharging>
+                                            <route id="r3"><distance><normal mu="2500" sigma="200"/></distance></route>
+                                        </transaction>
+				</with>
+                                <homeCharging>
+                                    <startTime><time>8:00</time></startTime>
+                                </homeCharging>
+			</transaction>
+		</infinity_loop>
+	</transaction>
+	<entities>
+            <fastCharging id="STATION1">
+                <capacity>20</capacity>
+            </fastCharging>
+            <homeCharging/>
+	    <route id="r0">
+                <limit>1.44e+02</limit>
+                <delay><normal mu="3600" sigma="200"/></delay>
+            </route>
+            <route id="r1">
+                <limit>1.44e+02</limit>
+                <delay><normal mu="3600" sigma="200"/></delay>
+            </route>
+            <route id="r2">
+                <limit>1.44e+02</limit>
+                <delay><normal mu="3600" sigma="200"/></delay>
+            </route>
+            <route id="r3">
+                <limit>1.44e+02</limit>
+                <delay><normal mu="3600" sigma="200"/></delay>
+            </route>
+	</entities>
+	<actor>
+		<b_capacity>1.44e+08</b_capacity>
+		<b_consumption>960</b_consumption>
+		<b_energy>1.44e+08</b_energy>
+	</actor>
+</model>
