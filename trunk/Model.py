@@ -171,6 +171,7 @@ class HomeCharging(LevelEntity):
         self.batCap=getXValue(xmlSource,"b_capacity",self.xcontext)
         self.energy=getXValue(xmlSource,"b_energy",self.xcontext) 
         self.current=10
+        self.voltage=230
         self.epoch = Property(xmlSource.get("epoch", "s.t"))
         self.period = xmlSource.get("period", None)
         if self.period is not None:
@@ -196,7 +197,7 @@ class HomeCharging(LevelEntity):
             ptime = start + ptime
             
         duration = ptime - atime 
-        amount=duration*self.current
+        amount=(duration*self.current)*3600*self.voltage   #výsledek v joulech
         yield self.get(amount>self.batCap if self.batCap else amount)
         yield self.put(amount>self.batCap if self.batCap else amount)
         yield self.hold(float(duration))
@@ -212,6 +213,7 @@ class FastCharging(SharedEntity):
         self.maxWaiting=getXValue(xmlSource,"maxWaiting",self.xcontext)
         self.duration=getXValue(xmlSource,"duration",self.xcontext)
         self.current=32
+        self.voltage=400
     
     def createSharedObject(self, xmlSource):
         capacity=getXValue(xmlSource,"capacity",self.xcontext)
@@ -239,7 +241,7 @@ class FastCharging(SharedEntity):
         self.simulation.activate(self.alarm, self.alarm.wakeup(delay=float(self.maxWaiting)))
         yield self.request()
         if self.gotResource():
-            amount=self.duration*self.current
+            amount=(self.duration*self.current)*3600*self.voltage  #výsledek v joulech
             yield self.get(amount>self.batCap if self.batCap else amount)
             yield self.put(amount>self.batCap if self.batCap else amount)
             yield self.hold(float(self.duration))
