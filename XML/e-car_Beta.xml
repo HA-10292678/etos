@@ -8,7 +8,7 @@
 			<stop_simulation/>
 		</start_transaction>
 		<counted_loop>
-			<count>10</count>
+			<count>$number_of_cars</count>
 			<transaction>
 				<start_transaction transactionUrl="#transaction[@id='e-car']"/>
 			</transaction>

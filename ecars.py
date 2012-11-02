@@ -9,6 +9,8 @@ from Dumper import Dumper
 registerModule(ECarModel)
 registerModule(Pause)
 sim = Simulation()
+sim.disableLog()
+sim.setParameter("number_of_cars", 2)
 sim.start("XML/e-car_Beta.xml#transaction[@id='starter']")
 
 d = Dumper()

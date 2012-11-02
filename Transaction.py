@@ -44,15 +44,7 @@ class Transaction(Process):
             self.pid = self.simulation.getTId()
             self.id = tid if tid is not None else self.pid
             self.ppid = ppid
-        
-            path, base = transactionXmlNode.getWithBase("entities")
-            if path is not None:
-                self.entitiesXmlNode.append(xmlLoader(path, base=base))
-            self.factory = EntityFactory(entitiesXmlNode)
-            self.entities = populateEntities(self.factory, self, transactionXmlNode)
-            self.startTime = None
-            self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)
-            self.t = self.xcontext.t
+
             if actor is not None:
                 self.actor = actor
             else:
@@ -62,6 +54,16 @@ class Transaction(Process):
                                        extraProperties = True)
                 else:
                     self.actor = Actor(self.simulation, XmlSource())
+
+            self.startTime = None
+            self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)        
+            self.t = self.xcontext.t
+
+            path, base = transactionXmlNode.getWithBase("entities")
+            if path is not None:
+                self.entitiesXmlNode.append(xmlLoader(path, base=base))
+            self.factory = EntityFactory(entitiesXmlNode)
+            self.entities = populateEntities(self.factory, self, transactionXmlNode)
         except Exception as e:
             print(e)
             traceback.print_exc(file=sys.stderr)
@@ -153,7 +155,7 @@ class CountedLoop(Loop):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.count = 0
-        self.limit = int(getXValue(xmlSource, "count", self.xcontext))
+        self.limit = int(getXValue(xmlSource, "count", XValueHelper(self)))
             
     def test(self):
         self.count += 1

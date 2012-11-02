@@ -18,6 +18,8 @@ class Simulation (SimPy.Simulation.Simulation):
         self.tcounter = 0
         self.returnSignal = SimPy.Simulation.SimEvent("return from subroutines", sim=self)
         self.initialize()
+        self.xvalues = {}
+        self.logging = True
 
 
     def start(self, transaction, duration = 0xFFFFFFFF):
@@ -26,6 +28,13 @@ class Simulation (SimPy.Simulation.Simulation):
         self.activate(transaction, transaction.run())
         self.simulate(until=int(duration))
         
+
+    def setParameter(self, key, value):
+        self.xvalues[key] = value if isinstance(value, XValue) else XValue(value)
+        
+    def getParameter(self, key):
+        return self.xvalues[key]
+
     def __getattr__(self, name):
         if name in self.collector.categories:
             return self.collector.categories[name]
@@ -35,6 +44,9 @@ class Simulation (SimPy.Simulation.Simulation):
     def getTId(self):
         self.tcounter += 1
         return self.tcounter
+    
+    def disableLog(self):
+        self.logging = False
     
 def registerModule(module):
     Transaction.EntityFactory.registerModule(module)
