@@ -93,8 +93,8 @@
             </route>
 	</entities>
 	<actor>
-		<b_capacity>1.44e+08</b_capacity>
-		<b_consumption>960</b_consumption>
-		<b_energy>1.44e+08</b_energy>
+		<capacity>1.44e+08</capacity>
+		<consumption>960</consumption>
+		<energy>1.44e+08</energy>
 	</actor>
 </model>

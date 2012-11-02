@@ -31,7 +31,7 @@ class PauseTo(SimpleEntity):
             assert self.time < self.period
         assert 0 <= self.time
         
-    def action(self):
+    def duration(self):
         ptime = self.time
         atime = float(self.epoch.get(self.transaction, self))
         if self.period is not None:
@@ -41,6 +41,7 @@ class PauseTo(SimpleEntity):
             if ptime < rem:
                 start += self.period
             ptime = start + ptime
-            
-        duration = ptime - atime 
-        yield self.hold(duration)    
+        return ptime - atime
+        
+    def action(self): 
+        yield self.hold(self.duration())    

@@ -25,3 +25,21 @@ class Property:
         elif self.locator == "o":
             obj = entity.sharedObject
         return getattr(obj, self.propName)
+
+    def set(self, transaction, entity, value):
+        obj = None
+        if self.locator == "a":
+            obj = transaction.actor
+            if(hasattr(obj, self.propName)):
+                setattr(obj, self.propName, value)
+            else:
+                obj.props[self.propName] = value
+        if self.locator == "t":
+            obj = transaction
+        elif self.locator == "s":
+            obj = transaction.simulation
+        elif self.locator == "e":
+            obj = entity
+        elif self.locator == "o":
+            obj = entity.sharedObject
+        setattr(obj, self.propName, value)
