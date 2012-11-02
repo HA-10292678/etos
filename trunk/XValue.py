@@ -10,6 +10,40 @@ class InvalidXMLException(Exception):
     def __init__(self, msg):
         super().__init__(msg)
 
+class XValueHelper:
+    ENTITY_CONTEXT = 0
+    TRANSACTION_CONTEXT = 1
+    ACTOR_CONTEXT = 2
+    SIMULATION_CONTEXT = 3
+    
+    attribNames = ("entity", "transaction", "actor", "simulation")
+    
+    @staticmethod
+    def fromAttribName(name):
+        index = attribNames.find(name)
+        assert index >= 0
+        return index
+    
+    def __init__(self, entity, stdContextType = ENTITY_CONTEXT):
+        transaction = entity.transaction
+        actorContext = transaction.actor.xcontext
+        
+        self.contexts = (entity.xcontext, transaction.xcontext,
+                         actorContext,transaction.simulation.xcontext)
+        self.parameterProvider = transaction.simulation
+        self.stdContext = self.contexts[stdContextType]
+        
+
+    def getContext(self, contextType):
+        return self.contexts[contextType]
+    
+    
+    def getParameter(self, id, context):
+        xvalue = self.parameterProvider.getParameter(id)
+        xvalue.setContext(context)
+        return xvalue
+
+
 class XValueContext:
     "context for x-values (support of scope and local timescale)"
     def __init__(self, timeFunc = None):
@@ -46,10 +80,13 @@ class XValueType:
     TIME_DEPENDENT = 2
 
 class XValue:
-    def __init__(self, value, context):
-        assert value is not None #null (undefined) values are not supported 
-        self.context =  context
-        self.context.addValue(self)
+    def __init__(self, value, context = None):
+        assert value is not None #null (undefined) values are not supported
+        if context is not None:
+            self.context =  context
+            self.context.addValue(self)
+        else:
+            self.context = None
         if isinstance(value, numbers.Real):
             self.type = XValueType.FIXED #fixed itegral or float number
             self.fval = None
@@ -65,6 +102,10 @@ class XValue:
         else:
             raise TypeError("unsupported value type")
         self.time = None
+    
+    def setContext(self, context):
+        self.context =  context
+        self.context.addValue(self)
     
     def reset(self): #reset random value in the begining of new scope
         if self.type == XValueType.RANDOM:
@@ -154,16 +195,25 @@ def number(text, keepInt = False):
         return float(text)
     
     
-def getXValue(xmlSource, tag, context, default = None):
+def getXValue(xmlSource, tag, contextHelper, default = None):
     node = xmlSource.findNode(tag)
+    if isinstance(contextHelper, XValueHelper):
+        contextAttr = xmlSource.get("context")
+        context = (contextHelper.stdContext if contextAttr is None
+                    else contextHelper.getContext(XValueHelper.fromAttribName(contextAttr)))
+    else:
+        context = contextHelper
     if node is None:
         if default is not None:
             return XValue(default)
         raise InvalidXMLException("undefined attribute {0}".format(tag))
     subNode = node.find("*")
     if subNode is None:
-        ntext = node.text 
-        return number(ntext, keepInt=True)
+        ntext = node.text
+        if ntext.startswith("$"):
+            return contextHelper.getParameter(ntext[1:], context)
+        else:
+            return number(ntext, keepInt=True)
     if subNode.tag == "normal":
         mu = number(subNode.get("mu", 0.0))
         sigma = number(subNode.get("sigma", 1.0))

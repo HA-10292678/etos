@@ -132,14 +132,15 @@ class Checkpoint(SimpleEntity):
             if measure.key is not None:
                 key = measure.key.get(self.transaction, self.referedEntity)
             if measure.kind == Collector.LOG:
-                keystr = "({0})".format(key) if key is not None else ""
-                print("{0}: {1} {2}={3} {4}"
-                      .format(dtstr(self.simulation.t),
+                if self.simulation.logging:
+                    keystr = "({0})".format(key) if key is not None else ""
+                    print("{0}: {1} {2}={3} {4}"
+                          .format(dtstr(self.simulation.t),
                               measure.category,
                               measure.propSpec,
                               prop,
                               keystr),
-                      file=sys.stderr)    
+                          file=sys.stderr)    
             else:
                 self.simulation.collector.collect(measure.category, prop, measure.kind, key)
                 
@@ -150,4 +151,5 @@ class Trace(SimpleEntity):
        
     def action(self):
         yield self.hold(0)
-        print("{0}:: {1}".format(dtstr(self.simulation.t),self.text),file=sys.stderr)
+        if self.simulation.logging:
+            print("{0}:: {1}".format(dtstr(self.simulation.t),self.text),file=sys.stderr)
