@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import collections
+
 class Dumper():
     def __init__(self):
         self.dumped = set()
@@ -10,6 +12,8 @@ class Dumper():
             return [self.dump(item) for item in obj]
         if hasattr(obj, "__float__"):
             return float(obj)
+        if hasattr(obj, "__str__"):
+            return "(" + str(obj) + ")"
         if hasattr(obj, "__dict__") and isinstance(obj, collections.Hashable):
             if obj in self.dumped:
                 return "<r>"

@@ -31,6 +31,9 @@ class Statistics:
     def standardDeviation(self):
         return sqrt((self.s0*self.s2-self.s1*self.s1)/(self.s0*(self.s0-1)))
 
+    def __str__(self):
+        return "count: {0.count}, mean: {0.mean} stddev:{0.standardDeviation}".format(self)
+
 class Collector:
     STAT=0
     COUNTER=1

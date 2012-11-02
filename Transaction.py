@@ -306,7 +306,16 @@ class StopSimulation(SimpleEntity):
     def action(self):
         yield self.hold(0)
         self.simulation.stopSimulation()
+        
+class SetEntity(SimpleEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.value = getXValue(xmlSource, "value", self.xcontext)
+        self.property = Property(xmlSource.get("property"))
     
+    def action():
+        yield self.hold(0)
+        self.property.set(self.transaction, self, float(self.value))
   
 class EntityFactory:
     stdMapping = dict({ "if" : If, "while" : While, "with" : WithProbability},
@@ -319,7 +328,8 @@ class EntityFactory:
                       while_in_range = WhileInRange,
                       if_in_range = IfInRange,
                       exit = ExitTransaction,
-                      stop_simulation = StopSimulation)
+                      stop_simulation = StopSimulation,
+                      set = SetEntity)
     def __init__(self, entityNode, mapping = None):
         if mapping is None:
             mapping = EntityFactory.stdMapping
