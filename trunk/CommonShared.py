@@ -2,7 +2,7 @@
 
 from SimPy.Simulation import *
 from Entity import ResourceEntity
-from XValue import getXValue
+from XValue import getXValue, XValueHelper
 
 class Alarm(Process):
     """
@@ -27,7 +27,8 @@ class LimitedWaitingResourceEntity (ResourceEntity):
         self.usedResource = False
         
     def createSharedObject(self, xmlSource):
-        capacity = getXValue(xmlSource, "resources", self.simulation.xcontext)
+        capacity = getXValue(xmlSource, "resources",
+                             XValueHelper(self, XValueHelper.SIMULATION_CONTEXT))
         return Resource(int(capacity), sim=self.simulation)
         
     def action(self):

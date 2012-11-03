@@ -3,12 +3,12 @@
 <model>
 	<transaction id="starter">
 		<start_transaction>
-			<pause><duration>240:00</duration></pause>
+			<pause><duration>48:00</duration></pause>
 			<trace text="simulation stopped"/>
 			<stop_simulation/>
 		</start_transaction>
 		<counted_loop>
-			<count>$number_of_cars</count>
+			<count>$cars</count>
 			<transaction>
 				<start_transaction transactionUrl="#transaction[@id='e-car']"/>
 			</transaction>
@@ -17,54 +17,57 @@
 	
 	<transaction id="e-car" entities="#entities" actor="#actor">
 		<pause_to period="24:00">
-			<time>8:00</time>
+			<time><normal mu="8:00" sigma="1:00"/></time>
 		</pause_to>
 		<infinity_loop>
 			<transaction>
-				<set property="a.outOfCharge"><value>0</value></set>
+				<set property="a.batteryOutEvent"><value>0.0</value></set>
 				<trace text="leaving home"/>
 				<checkpoint id="log"/>
                 <route id="City">
-						<distance><normal mu="15" sigma="3"/></distance>
+						<distance context="transaction">
+								<normal mu="20" sigma="3"/>
+						</distance>		
                 </route>
                                 
-				<pause><duration>8:00:00</duration></pause>
-				<checkpoint id="log"/>
+				<checkpoint id="log"/>				
+				<pause><duration>8:30:00</duration></pause>
 				<with>
 					<probability>0.5</probability>
 					<transaction>
-						<trace text="go to home"/>
                         <route id="City">
-								<distance><normal mu="15" sigma="3"/></distance>
-                        </route>	
+								<distance context="transaction"><normal mu="20" sigma="3"/></distance>
+                        </route>				
 				    </transaction>
 					<!-- else -->
 				    <transaction>
-						<trace text="go to shop"/>
                         <route id="City">
-                                <distance><normal mu="5" sigma="1"/></distance>
+                                <distance><normal mu="10" sigma="1"/></distance>
                         </route>
 						<trace text="preCharging"/>
 						<checkpoint id="log"/>					    
                         <fastCharging id="shop">
-                                <duration>2:00</duration>
+                                <duration>1:00</duration>
                                 <queue_waiting>0:05</queue_waiting>
                         </fastCharging>
 						<trace text="postCharging"/>
                         <checkpoint id="log"/>
                         <route id="City">
-                                <distance><normal mu="12" sigma="3"/></distance>
-                        </route>											
-					    
+                                <distance context="actor"><normal mu="18" sigma="3"/></distance>		
+                        </route>
                    </transaction>
 				</with>
 				<checkpoint id="log"/>
                 <checkpoint>
-						<measure property="a.outOfCharge" category="outOfCharge" key="t.id"
-						type="stat"/>
+						<measure property="a.batteryOutEvent" category="batteryOut" key="t.id"
+						type="counter"/>
+				</checkpoint>
+				<checkpoint>
+						<measure property="a.batteryOutEvent" category="batteryOut" key="t.id"
+						type="log"/>
 				</checkpoint>
 				<homeCharging id="Home240" period="24:00">
-						<time>8:00</time>
+						<time><normal mu="8:00" sigma="1:00"/></time>
                 </homeCharging>
 			</transaction>
 		</infinity_loop>
@@ -73,15 +76,15 @@
         <fastCharging id="shop">
 				<voltage>400</voltage>
 				<current>36</current>
-                <resources>20</resources>
+                <resources>$stations</resources>
         </fastCharging>
         <homeCharging id="Home240">
 				<voltage>240</voltage>
-				<current>16</current>		
+				<current>12</current>		
 	    </homeCharging>
 	    <route id="City">
-                <limit>0.1</limit>
-				<velocity>40</velocity>
+                <limit>0.15</limit>
+				<velocity><normal mu="40" sigma="5"></normal></velocity>
 				<delay><normal mu="1:00" sigma="0:10"/></delay>
         </route>
 		<checkpoint id="log">
@@ -90,8 +93,8 @@
  	</entities>
 	<actor>
 		<capacity>20</capacity>
-		<consumption>0.6667</consumption>
-		<energy>60</energy>
-		<outOfCharge>0</outOfCharge>
+		<consumption>0.35</consumption>
+		<energy>16</energy>
+		<batteryOutEvent>0</batteryOutEvent>
 	</actor>
 </model>

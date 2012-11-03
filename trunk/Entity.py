@@ -22,6 +22,9 @@ class Entity:
         self.startTime = None
         self.t = self.xcontext.t
 
+    def setTransaction(self, transaction):
+        self.transaction = transaction
+    
     def action(self):
         raise NotImplementedError("Abstract method")
         

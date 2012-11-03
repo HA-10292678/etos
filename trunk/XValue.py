@@ -16,13 +16,11 @@ class XValueHelper:
     ACTOR_CONTEXT = 2
     SIMULATION_CONTEXT = 3
     
-    attribNames = ("entity", "transaction", "actor", "simulation")
+    attribNames = {"entity" : 0, "transaction" : 1, "actor" : 2, "simulation" : 3}
     
     @staticmethod
     def fromAttribName(name):
-        index = attribNames.find(name)
-        assert index >= 0
-        return index
+        return XValueHelper.attribNames[name]
     
     def __init__(self, entity, stdContextType = ENTITY_CONTEXT):
         transaction = entity.transaction
@@ -198,7 +196,7 @@ def number(text, keepInt = False):
 def getXValue(xmlSource, tag, contextHelper, default = None):
     node = xmlSource.findNode(tag)
     if isinstance(contextHelper, XValueHelper):
-        contextAttr = xmlSource.get("context")
+        contextAttr = node.get("context")
         context = (contextHelper.stdContext if contextAttr is None
                     else contextHelper.getContext(XValueHelper.fromAttribName(contextAttr)))
     else:

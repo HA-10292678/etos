@@ -34,8 +34,8 @@ def populateSubTransactions(factory, transaction, xmlNode):
     return entities
  
 class Transaction(Process):
-    def __init__(self,  transactionXmlNode, simulation, tid = None, ppid = None, entitiesXmlNode = None,
-                 actor = None):
+    def __init__(self,  transactionXmlNode, simulation, tid = None, ppid = None,
+                 entitiesXmlNode = None, actor = None, entities = None, xcontext = None):
         super().__init__(sim=simulation)
         self.simulation = simulation
         try:
@@ -56,14 +56,22 @@ class Transaction(Process):
                     self.actor = Actor(self.simulation, XmlSource())
 
             self.startTime = None
-            self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)        
+            if xcontext is None:
+                self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)
+            else:
+                self.xcontext = xcontext
             self.t = self.xcontext.t
 
             path, base = transactionXmlNode.getWithBase("entities")
             if path is not None:
                 self.entitiesXmlNode.append(xmlLoader(path, base=base))
-            self.factory = EntityFactory(entitiesXmlNode)
-            self.entities = populateEntities(self.factory, self, transactionXmlNode)
+            if entities is None:
+                self.factory = EntityFactory(entitiesXmlNode)    
+                self.entities = populateEntities(self.factory, self, transactionXmlNode)
+            else:
+                for entity in entities:
+                    entity.setTransaction(self)
+                self.entities = entities
         except Exception as e:
             print(e)
             traceback.print_exc(file=sys.stderr)
@@ -116,6 +124,11 @@ class ControlEntity(SimpleEntity):
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
         self.subentities = populateSubTransactions(factory, self.transaction, self.xmlSource)
+        
+    def setTransaction(self, transaction):
+        self.transaction = transaction
+        for subentity in self.subentities:
+            subentity.setTransaction(transaction)
      
 class Loop(ControlEntity):
     def __init__(self, transaction, xmlSource):
@@ -175,8 +188,8 @@ class WhileInRange(Loop):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.property = Property(xmlSource.get("property")) 
-        self.minimum = float(getXValue(xmlSource, "minimum", self.xcontext))
-        self.maximum = float(getXValue(xmlSource, "maximum", self.xcontext))
+        self.minimum = float(getXValue(xmlSource, "minimum", XValueHelper(self)))
+        self.maximum = float(getXValue(xmlSource, "maximum", XValueHelper(self)))
         
     def test(self):
         value = float(self.property.get(self.transaction, self))
@@ -217,7 +230,7 @@ class Branching(ControlEntity):
 class WithProbability(Branching):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        self.probability = float(getXValue(xmlSource, "probability", self.xcontext))
+        self.probability = float(getXValue(xmlSource, "probability", XValueHelper(self)))
         
     def test(self):
         x = random.random()
@@ -235,8 +248,8 @@ class IfInRange(Branching):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.property = Property(xmlSource.get("property")) 
-        self.minimum = float(getXValue(xmlSource, "minimum", self.xcontext))
-        self.maximum = float(getXValue(xmlSource, "maximum", self.xcontext))
+        self.minimum = float(getXValue(xmlSource, "minimum", XValueHelper(self)))
+        self.maximum = float(getXValue(xmlSource, "maximum", XValueHelper(self)))
         
     def test(self):
         value = float(self.property.get(self.transaction, self))
@@ -274,12 +287,16 @@ class StartTransaction(TransactionEntity):
 class SubTransaction(TransactionEntity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
+        self.savedEntities = None
             
     def action(self):
-        t = Transaction(self.transactionNode, simulation=self.simulation,
-                        tid = self.transaction.id, ppid = self.transaction.pid,
-                        entitiesXmlNode = self.entitiesNode, actor = self.transaction.actor)
-        self.simulation.activate(t, t.run(), at = 0)
+        trans = Transaction(self.transactionNode, simulation=self.simulation,
+                            tid = self.transaction.id, ppid = self.transaction.pid,
+                            entitiesXmlNode = self.entitiesNode, actor = self.transaction.actor,
+                            entities = self.savedEntities, xcontext = self.transaction.xcontext)
+        if self.savedEntities is None:
+            self.savedEntities = trans.entities
+        self.simulation.activate(trans, trans.run(), at = 0)
         finishedSubtrans = -1
         while finishedSubtrans != self.transaction.pid:
             yield waitevent, self.transaction, self.simulation.returnSignal
@@ -315,7 +332,7 @@ class SetEntity(SimpleEntity):
         self.value = getXValue(xmlSource, "value", self.xcontext)
         self.property = Property(xmlSource.get("property"))
     
-    def action():
+    def action(self):
         yield self.hold(0)
         self.property.set(self.transaction, self, float(self.value))
   
