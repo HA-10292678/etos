@@ -32,6 +32,10 @@ class Simulation (SimPy.Simulation.Simulation):
     def setParameter(self, key, value):
         self.xvalues[key] = value if isinstance(value, XValue) else XValue(value)
         
+    def setParameters(self, **kwargs):
+        for key, value in kwargs.items():
+            self.setParameter(key, value)
+        
     def getParameter(self, key):
         return self.xvalues[key]
 
