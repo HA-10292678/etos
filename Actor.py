@@ -13,7 +13,7 @@ class Actor:
                 self.props[tag] = getXValue(xmlSource, tag, self.xcontext)
         
     def __str__(self):
-        return ",".join(self.props.keys())
+        return ",".join(str(val) for val in self.props.values())
 
         
         

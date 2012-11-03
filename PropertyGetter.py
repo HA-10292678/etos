@@ -13,9 +13,9 @@ class Property:
         if self.locator == "a":
             obj = transaction.actor
             if(hasattr(obj, self.propName)):
-                return getattr(obj, self.propName)
+               return getattr(obj, self.propName)
             else:
-                return obj.props[self.propName]
+              return obj.props[self.propName]
         if self.locator == "t":
             obj = transaction
         elif self.locator == "s":
@@ -34,6 +34,7 @@ class Property:
                 setattr(obj, self.propName, value)
             else:
                 obj.props[self.propName] = value
+            return
         if self.locator == "t":
             obj = transaction
         elif self.locator == "s":

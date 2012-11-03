@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from Entity import SimpleEntity
-from XValue import getXValue, number
+from XValue import getXValue, number, XValueHelper
 from PropertyGetter import Property
 import math
 
@@ -12,10 +12,10 @@ class Pause(SimpleEntity):
     tag = "pause"
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        self.duration = getXValue(xmlSource, "duration", self.xcontext)
+        self.duration = getXValue(xmlSource, "duration", XValueHelper(self))
         
     def action(self):
-        yield self.hold(self.duration)
+        yield self.hold(float(self.duration))
         
         
 class PauseTo(SimpleEntity):
@@ -26,13 +26,11 @@ class PauseTo(SimpleEntity):
         self.period = xmlSource.get("period", None)
         if self.period is not None:
             self.period = number(self.period)
-        self.time = getXValue(xmlSource, "time", self.xcontext)
-        if self.period is not None:
-            assert self.time < self.period
-        assert 0 <= self.time
+        self.time = getXValue(xmlSource, "time", XValueHelper(self))
+        
         
     def duration(self):
-        ptime = self.time
+        ptime = float(self.time)
         atime = float(self.epoch.get(self.transaction, self))
         if self.period is not None:
             comper = math.floor(atime / self.period)
