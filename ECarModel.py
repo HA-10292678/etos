@@ -34,11 +34,11 @@ class Route(SimpleEntity):
         if (actor["energy"] <= 0 or actor["energy"] / actor["capacity"] <= self.limit):
             yield self.hold(self.delay)
             actor["energy"] = 0.5 *  actor["capacity"]
-            actor["batteryOutEvent"] = -1.0
+            actor["batteryOutEvent"] = 1.0
             self.batteryOut = True
     
 def charging(voltage, current, energy, capacity, duration):
-        energy += voltage * current * (duration / 3600.0) / 1000.0 #v kWh
+        energy += 0.8 * voltage * current * (duration / 3600.0) / 1000.0 #v kWh
         return capacity if energy > capacity else energy
     
 class HomeCharging (PauseTo):

@@ -3,7 +3,7 @@
 <model>
 	<transaction id="starter">
 		<start_transaction>
-			<pause><duration>48:00</duration></pause>
+			<pause><duration>240:00</duration></pause>
 			<trace text="simulation stopped"/>
 			<stop_simulation/>
 		</start_transaction>
@@ -33,13 +33,7 @@
 				<checkpoint id="log"/>				
 				<pause><duration>8:30:00</duration></pause>
 				<with>
-					<probability>0.5</probability>
-					<transaction>
-                        <route id="City">
-								<distance context="transaction"><normal mu="20" sigma="3"/></distance>
-                        </route>				
-				    </transaction>
-					<!-- else -->
+					<probability>$shoppingProbability</probability>									
 				    <transaction>
                         <route id="City">
                                 <distance><normal mu="10" sigma="1"/></distance>
@@ -56,15 +50,16 @@
                                 <distance context="actor"><normal mu="18" sigma="3"/></distance>		
                         </route>
                    </transaction>
+					<transaction>
+                        <route id="City">
+								<distance context="transaction"><normal mu="20" sigma="3"/></distance>
+                        </route>				
+				    </transaction>
 				</with>
 				<checkpoint id="log"/>
                 <checkpoint>
 						<measure property="a.batteryOutEvent" category="batteryOut" key="t.id"
 						type="counter"/>
-				</checkpoint>
-				<checkpoint>
-						<measure property="a.batteryOutEvent" category="batteryOut" key="t.id"
-						type="log"/>
 				</checkpoint>
 				<homeCharging id="Home240" period="24:00">
 						<time><normal mu="8:00" sigma="1:00"/></time>
