@@ -58,8 +58,7 @@
 				</with>
 				<checkpoint id="log"/>
                 <checkpoint>
-						<measure property="a.batteryOutEvent" category="batteryOut" key="t.id"
-						type="counter"/>
+						<measure property="a.batteryOutEvent" category="batteryOut" type="counter"/>
 				</checkpoint>
 				<homeCharging id="Home240" period="24:00">
 						<time><normal mu="8:00" sigma="1:00"/></time>
