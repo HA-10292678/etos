@@ -3,6 +3,7 @@
 import sys
 from multiprocessing import *
 from multiprocessing.managers import *
+import numpy as np
 
 def make_server_manager(port, authkey):
     """ Create a manager for the server, listening on the given port.
@@ -30,7 +31,8 @@ def runserver():
     shared_job_q = manager.get_job_q()
     shared_result_q = manager.get_result_q()
 
-    tasks = [dict(cars=c, stations=s, shoppingProbability=0.5) for c in range(1,5) for s in range(1,5)]
+    tasks = [dict(cars=100, stations=s, shoppingProbability=sp) for s in range(50,160,10) 
+																for sp in np.arange(0.0, 1.1, 0.1)]
     numTasks=len(tasks)
     for task in tasks:
         shared_job_q.put(task)
@@ -39,8 +41,8 @@ def runserver():
     numresults = 0
 #   print(numTasks)
     while numresults < numTasks:
-        results=shared_result_q.get()
-        print("\t".join(str(item) for item in results))
+        req,result=shared_result_q.get()
+        print(req["stations"],req["shoppingProbability"],result)
         numresults += 1
 
     # Sleep a bit before shutting down the server - to give clients time to
