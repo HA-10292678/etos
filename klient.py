@@ -14,11 +14,11 @@ def taskF(job_q, result_q):
     while(True):
         sim = Simulation()
         request=job_q.get()
-        print("request", request)
         sim.disableLog()
         sim.setParameters(**request)
         sim.start("XML/e-car-inwest.xml#transaction[@id='starter']") 
         result_q.put( (request["cars"], request["stations"], sim.batteryOut[1.0]))
+        print("request", request)
         
 def mp_simulate(shared_job_q, shared_result_q, nprocs):
     """ Split the work with jobs in shared_job_q and results in
