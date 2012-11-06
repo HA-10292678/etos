@@ -19,7 +19,8 @@ def taskF(request):
     d = Dumper() 
     #return request["cars"], request["stations"], d.dump(sim.batteryOut)
     return request["cars"], request["stations"], d.dump(sim.batteryOut)
-    
+
+print(multiprocessing.cpu_count())    
 pool = multiprocessing.Pool()
 tasks = (dict(cars=c, stations=s, shoppingProbability=0.5) for c in range(1,5) for s in range(1,5))
 
