@@ -6,5 +6,5 @@ def charging(voltage, current, energy, capacity, duration):
 	renergy = min(energy/capacity + 0.168*x*x*x - 0.78*x*x +1.38*x, 1.0)
 	return renergy
 
-for i in range(0, 7200, 900):
-	print(i/3600.0, charging(400, 36, 2.4, 24, i))
+for i in range(0, 36000, 900):
+	print(i/3600.0, charging(230, 12, 2.4, 24, i))
