@@ -6,9 +6,11 @@ from multiprocessing.managers import BaseManager
 from Etos import *
 import Pause
 import ECarModel
+import socket
 
 registerModule(ECarModel)
 registerModule(Pause)
+
 
 def taskF(job_q, result_q):
     while(True):
@@ -17,7 +19,8 @@ def taskF(job_q, result_q):
         sim.disableLog()
         sim.setParameters(**request)
         sim.start("XML/e-car-inwest.xml#transaction[@id='starter']") 
-        result_q.put( (request, sim.batteryOut[1.0]))
+        ip = socket.gethostbyname(socket.gethostname())
+        result_q.put( (request, sim.batteryOut[1.0], ip))
         print("request", request)
         
 def mp_simulate(shared_job_q, shared_result_q, nprocs):
