@@ -3,8 +3,6 @@
 from Etos import *
 import ECarModel
 import Pause
-from Dumper import Dumper
-
 
 registerModule(ECarModel)
 registerModule(Pause)
@@ -13,5 +11,4 @@ sim = Simulation()
 sim.setParameters(cars=2, stations=2, shoppingProbability=0.5)
 sim.start("XML/e-car-inwest.xml#transaction[@id='starter']")
 
-d = Dumper()
-print(d.dump(sim.batteryOut))
+print(sim.batteryOut[1.0])

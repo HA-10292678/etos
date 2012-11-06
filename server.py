@@ -37,6 +37,7 @@ def runserver():
 
     # Wait until all results are ready in shared_result_q
     numresults = 0
+#   print(numTasks)
     while numresults < numTasks:
         results=shared_result_q.get()
         print("\t".join(str(item) for item in results))
