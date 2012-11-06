@@ -46,5 +46,6 @@ def runserver():
     time.sleep(2)
     manager.shutdown()
 
-runserver()
+if __name__ == '__main__':
+    runserver()
 
