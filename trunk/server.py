@@ -41,7 +41,8 @@ def runserver():
     numresults = 0
 #   print(numTasks)
     while numresults < numTasks:
-        req,result=shared_result_q.get()
+        req,result,id=shared_result_q.get()
+        print(req, id, file=sys.stderr)
         print(req["stations"],req["shoppingProbability"],result)
         numresults += 1
 
