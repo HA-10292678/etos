@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 
 import sys
-from multiprocessing import *
+import multiprocessing
+from multiprocessing.managers import BaseManager
+from Etos import *
+import Pause
+import ECarModel
+
+registerModule(ECarModel)
+registerModule(Pause)
 
 def taskF(job_q, result_q):
-    sim = Simulation()
-    request=job_q.get()
-    sim.disableLog()
-    sim.setParameters(**request)
-    sim.start("XML/e-car-inwest.xml#transaction[@id='starter']") 
-    result_q.put( (request["cars"], request["stations"], sim.batteryOut[1.0]))
-    
+    while(True):
+        sim = Simulation()
+        request=job_q.get()
+        print("request", request)
+        sim.disableLog()
+        sim.setParameters(**request)
+        sim.start("XML/e-car-inwest.xml#transaction[@id='starter']") 
+        result_q.put( (request["cars"], request["stations"], sim.batteryOut[1.0]))
+        
 def mp_simulate(shared_job_q, shared_result_q, nprocs):
     """ Split the work with jobs in shared_job_q and results in
         shared_result_q into several processes. Launch each process with
@@ -34,7 +43,7 @@ def make_client_manager(ip, port, authkey):
         accessing the shared queues from the server.
         Return a manager object.
     """
-    class ServerQueueManager(SyncManager):
+    class ServerQueueManager(BaseManager):
         pass
 
     ServerQueueManager.register('get_job_q')
@@ -47,7 +56,7 @@ def make_client_manager(ip, port, authkey):
     return manager
 
 def runclient():
-    manager = make_client_manager(sys.argv[1], 6842, "heslo")
+    manager = make_client_manager(sys.argv[1], 6842, b"heslo")
     job_q = manager.get_job_q()
     result_q = manager.get_result_q()
     mp_simulate(job_q, result_q, 4)
