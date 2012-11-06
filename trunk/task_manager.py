@@ -4,7 +4,8 @@ import multiprocessing
 from Etos import *
 import ECarModel
 import Pause
-from Dumper import Dumper
+import numpy as np
+import sys
 
 registerModule(ECarModel)
 registerModule(Pause)
@@ -16,13 +17,13 @@ def taskF(request):
     sim.disableLog()
     sim.setParameters(**request)
     sim.start("XML/e-car-inwest.xml#transaction[@id='starter']")
-    d = Dumper() 
-    #return request["cars"], request["stations"], d.dump(sim.batteryOut)
-    return request["cars"], request["stations"], d.dump(sim.batteryOut)
+    print("hotovo {0}".format(request["stations"]), file=sys.stderr)
+    return (request["stations"], request["shoppingProbability"], sim.batteryOut[1.0])
 
-print(multiprocessing.cpu_count())    
+#print(multiprocessing.cpu_count())    
 pool = multiprocessing.Pool()
-tasks = (dict(cars=c, stations=s, shoppingProbability=0.5) for c in range(1,5) for s in range(1,5))
+tasks = (dict(cars=200, stations=s, shoppingProbability=sp) for s in range(20, 210, 8)
+                                                            for sp in np.arange(0.0, 1.1, 0.1))
 
 for result in pool.imap_unordered(taskF, tasks):
     print("\t".join(str(item) for item in result))

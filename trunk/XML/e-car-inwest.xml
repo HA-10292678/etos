@@ -26,7 +26,7 @@
 				<checkpoint id="log"/>
                 <route id="City">
 						<distance context="transaction">
-								<normal mu="20" sigma="3"/>
+								<pnormal mu="20" sigma="5"/>
 						</distance>		
                 </route>
                                 
@@ -36,7 +36,7 @@
 					<probability>$shoppingProbability</probability>									
 				    <transaction>
                         <route id="City">
-                                <distance><normal mu="10" sigma="1"/></distance>
+                                <distance><pnormal mu="10" sigma="5"/></distance>
                         </route>
 						<trace text="preCharging"/>
 						<checkpoint id="log"/>					    
@@ -47,7 +47,7 @@
 						<trace text="postCharging"/>
                         <checkpoint id="log"/>
                         <route id="City">
-                                <distance context="actor"><normal mu="18" sigma="3"/></distance>		
+                                <distance context="actor"><pnormal mu="18" sigma="6"/></distance>		
                         </route>
                    </transaction>
 					<transaction>
@@ -88,7 +88,7 @@
 	<actor>
 		<capacity>20</capacity>
 		<consumption>0.35</consumption>
-		<energy>16</energy>
+		<energy>20</energy>
 		<batteryOutEvent>0</batteryOutEvent>
 	</actor>
 </model>
