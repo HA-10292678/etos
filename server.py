@@ -38,7 +38,8 @@ def runserver():
     # Wait until all results are ready in shared_result_q
     numresults = 0
     while numresults < numTasks:
-        print("\t".join(str(item) for item in numresults))
+        results=shared_result_q.get()
+        print("\t".join(str(item) for item in results))
         numresults += 1
 
     # Sleep a bit before shutting down the server - to give clients time to
