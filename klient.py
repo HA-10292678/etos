@@ -52,4 +52,5 @@ def runclient():
     result_q = manager.get_result_q()
     mp_simulate(job_q, result_q, 4)
     
-runclient()
+if __name__ == '__main__':    
+    runclient()
