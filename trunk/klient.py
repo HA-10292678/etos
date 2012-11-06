@@ -19,7 +19,7 @@ def taskF(job_q, result_q):
         sim.disableLog()
         sim.setParameters(**request)
         sim.start("XML/e-car-inwest.xml#transaction[@id='starter']") 
-        ip = socket.gethostbyname(socket.gethostname())
+        ip = sys.argv[2]
         result_q.put( (request, sim.batteryOut[1.0], ip))
         print("request", request)
         
