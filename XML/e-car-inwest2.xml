@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<model>
+	<transaction id="starter">
+		<start_transaction>
+			<pause><duration>360:00</duration></pause>
+			<trace text="simulation stopped"/>
+			<stop_simulation/>
+		</start_transaction>
+		<counted_loop>
+			<count>$cars</count>
+			<transaction>
+				<start_transaction transactionUrl="#transaction[@id='e-car']"/>
+			</transaction>
+		</counted_loop>
+	</transaction>
+	
+	<transaction id="e-car" entities="#entities" actor="#actor">
+		<pause_to period="24:00">
+			<time><normal mu="8:00" sigma="1:00"/></time>
+		</pause_to>
+		<infinity_loop>
+			<transaction>
+				<set property="a.batteryOutEvent"><value>0.0</value></set>
+                <route id="City">
+						<distance context="transaction">
+								<pnormal mu="20" sigma="5"/>
+						</distance>		
+                </route>
+                                				
+				<pause><duration>8:30:00</duration></pause>
+				<with>
+					<probability>$shoppingProbability</probability>									
+				    <transaction>
+                        <route id="City">
+                                <distance><pnormal mu="10" sigma="5"/></distance>
+                        </route>					    
+                        <fastCharging id="shop">
+                                <duration><pnormal mu="1:30" sigma="0:30"/></duration>
+                                <queue_waiting>0:05</queue_waiting>
+                        </fastCharging>
+                        <checkpoint referedEntity="prev">
+							<measure property="e.chargedEnergy" category="charged_f" type="stat"/>
+                        </checkpoint>
+                        <route id="City">
+                                <distance context="transaction"><pnormal mu="18" sigma="6"/></distance>		
+                        </route>
+                   </transaction>
+					<transaction>
+                        <route id="City">
+								<distance context="transaction"><normal mu="20" sigma="3"/></distance>
+                        </route>				
+				    </transaction>
+				</with>
+                <checkpoint>
+						<measure property="a.batteryOutEvent" category="batteryOut" type="counter"/>
+				</checkpoint>
+				<homeCharging id="Home240" period="24:00">
+						<time><normal mu="8:00" sigma="1:00"/></time>
+                </homeCharging>
+                <checkpoint referedEntity="prev">
+							<measure property="e.chargedEnergy" category="charged_h" type="stat"/>
+                </checkpoint>
+			</transaction>
+		</infinity_loop>
+	</transaction>
+	<entities>
+        <fastCharging id="shop">
+				<voltage>400</voltage>
+				<current>36</current>
+                <resources>$stations</resources>
+        </fastCharging>
+        <homeCharging id="Home240">
+				<voltage>240</voltage>
+				<current>12</current>		
+	    </homeCharging>
+	    <route id="City">
+                <limit>0.15</limit>
+				<velocity><normal mu="40" sigma="5"></normal></velocity>
+				<delay><normal mu="1:00" sigma="0:10"/></delay>
+        </route>
+		<checkpoint id="log">
+                <measure property="a.energy" category="energy" key="t.id" type="log"/>					
+		</checkpoint>	    
+ 	</entities>
+	<actor>
+		<capacity>20</capacity>
+		<consumption>0.35</consumption>
+		<energy>20</energy>
+		<batteryOutEvent>0</batteryOutEvent>
+	</actor>
+</model>

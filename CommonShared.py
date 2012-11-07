@@ -15,7 +15,7 @@ class Alarm(Process):
     
     def wakeup(self, delay):
             yield hold, self, delay
-            reactivate(self.transaction)
+            self.transaction.simulation.reactivate(self.transaction)
             yield hold, self  #unclear semantics
 
 class LimitedWaitingResourceEntity (ResourceEntity):
@@ -38,8 +38,7 @@ class LimitedWaitingResourceEntity (ResourceEntity):
         if self.gotResource():
             yield self.hold(float(self.duration))
             yield self.release()
-            self.usedResource = True
-        #else the car isn't using parking lot 
+            self.usedResource = True 
 
     def gotResource(self): #(c) http://simpy.sourceforge.net/reneging.htm
         """Tests whether the resource has been acquired"""

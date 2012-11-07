@@ -8,7 +8,8 @@ registerModule(ECarModel)
 registerModule(Pause)
 sim = Simulation()
 #sim.disableLog()
-sim.setParameters(cars=2, stations=2, shoppingProbability=0.5)
-sim.start("XML/e-car-inwest.xml#transaction[@id='starter']")
+sim.setParameters(cars=100, stations=1, shoppingProbability=0.9)
+sim.start("XML/e-car-inwest2.xml#transaction[@id='starter']")
 
-print(sim.batteryOut[1.0])
+print(sim.charged_f.sum / sim.charged_h.sum)
+
