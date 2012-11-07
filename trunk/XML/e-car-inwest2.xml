@@ -3,7 +3,7 @@
 <model>
 	<transaction id="starter">
 		<start_transaction>
-			<pause><duration>360:00</duration></pause>
+			<pause><duration>480:00</duration></pause>
 			<trace text="simulation stopped"/>
 			<stop_simulation/>
 		</start_transaction>

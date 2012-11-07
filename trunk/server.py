@@ -32,8 +32,8 @@ def runserver():
     shared_job_q = manager.get_job_q()
     shared_result_q = manager.get_result_q()
 
-    tasks = [dict(cars=100, stations=s, shoppingProbability=sp) 
-               for s in range(1,61,1)for sp in np.arange(0.1, 1.1, 0.1)]
+    tasks = [dict(cars=150, stations=s, shoppingProbability=sp) 
+               for s in range(1,51,1)for sp in np.arange(0.1, 1.1, 0.1)]
     numTasks=len(tasks)
     for task in tasks:
         shared_job_q.put(task)
@@ -45,7 +45,7 @@ def runserver():
     while numresults < numTasks:
         req,result,id=shared_result_q.get()
         print(req, id, file=sys.stderr)
-        print(req["stations"],req["shoppingProbability"]," ".join(str(x) for x in result), file=f)
+        print(req["stations"],req["shoppingProbability"]," ".join(str(x) for x in result), file=f)	
         f.flush()
         numresults += 1
 
