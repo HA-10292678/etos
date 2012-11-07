@@ -32,19 +32,21 @@ def runserver():
     shared_job_q = manager.get_job_q()
     shared_result_q = manager.get_result_q()
 
-    tasks = [dict(cars=100, stations=s, shoppingProbability=sp) for s in range(50,160,10) 
-																for sp in np.arange(0.0, 1.1, 0.1)]
+    tasks = [dict(cars=100, stations=s, shoppingProbability=sp) 
+               for s in range(1,61,1)for sp in np.arange(0.1, 1.1, 0.1)]
     numTasks=len(tasks)
     for task in tasks:
         shared_job_q.put(task)
 
     # Wait until all results are ready in shared_result_q
+    f = open(sys.argv[1], "wt")
     numresults = 0
-#   print(numTasks)
+    print(numTasks)
     while numresults < numTasks:
         req,result,id=shared_result_q.get()
         print(req, id, file=sys.stderr)
-        print(req["stations"],req["shoppingProbability"],result)
+        print(req["stations"],req["shoppingProbability"],result, file=f)
+        f.flush()
         numresults += 1
 
     # Sleep a bit before shutting down the server - to give clients time to

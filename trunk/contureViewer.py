@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sc
 from scipy.interpolate import  griddata
+import sys
 
-
-d=np.loadtxt("results1")
+d=np.loadtxt(sys.argv[1])
 
 points=d[:,0:2]
 values=d[:,2]
