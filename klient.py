@@ -20,7 +20,7 @@ def taskF(job_q, result_q):
         sim.setParameters(**request)
         sim.start("XML/e-car-inwest2.xml#transaction[@id='starter']") 
         ip = sys.argv[2]
-        result_q.put( (request, sim.charged_f.sum / sim.charged_h.sum, ip))
+        result_q.put( (request, (sim.charged_f.sum / sim.charged_h.sum, sim.batteryOut[1.0]), ip))
         print("request", request)
         
 def mp_simulate(shared_job_q, shared_result_q, nprocs):
