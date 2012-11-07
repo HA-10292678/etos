@@ -45,7 +45,7 @@ def runserver():
     while numresults < numTasks:
         req,result,id=shared_result_q.get()
         print(req, id, file=sys.stderr)
-        print(req["stations"],req["shoppingProbability"],result, file=f)
+        print(req["stations"],req["shoppingProbability"]," ".join(str(x) for x in result), file=f)
         f.flush()
         numresults += 1
 
