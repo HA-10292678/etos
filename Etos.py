@@ -16,7 +16,6 @@ class Simulation (SimPy.Simulation.Simulation):
         self.t = self.xcontext.t
         self.collector = Collector()
         self.tcounter = 0
-        self.returnSignal = SimPy.Simulation.SimEvent("return from subroutines", sim=self)
         self.initialize()
         self.xvalues = {}
         self.logging = True

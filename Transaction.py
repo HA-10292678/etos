@@ -32,9 +32,9 @@ def populateEntities(factory, transaction, xmlNode):
             raise Exception("Invalid referention to refered entity [checkpoint]")
     return entities
 
-def populateSubTransactions(factory, transaction, xmlNode):
+def populateSubTransactions(factory, transaction, xmlNode, valueNodes):
     entities = [factory.createFromXml(node, transaction, base)
-                    for node,base in xmlNode.iterWithBased() if node.tag == "transaction"]
+                    for node,base in xmlNode.iterWithBased() if node.tag not in valueNodes]
     return entities
  
 class Transaction(Process):
@@ -94,7 +94,7 @@ class Transaction(Process):
                 while True:
                     try:
                         event = next(i)
-                        print(self.pid, event.__class__, entity)
+                        #print(self.pid, event.__class__, entity)
                         if isinstance(event, ExceptionEvent):
                             interrupted = True
                             exceptionEvent = event
@@ -109,7 +109,7 @@ class Transaction(Process):
                 if interrupted:
                     break
         if not self.topLevel:
-            self.simulation.returnSignal.signal((self.pid, exceptionEvent))
+            self.returnSignal.signal(exceptionEvent)
         else:
             if interrupted and exceptionEvent.type != "__exit__":
                 print("UNHANDLED EXCEPTION '{0}'".format(exceptionEvent.type))
@@ -132,15 +132,21 @@ class ControlEntity(SimpleEntity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.xmlSource = xmlSource
+        self.valueNodes = []
     
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
-        self.subentities = populateSubTransactions(factory, self.transaction, self.xmlSource)
+        self.subentities = populateSubTransactions(factory, self.transaction, self.xmlSource, self.valueNodes)
         
     def setTransaction(self, transaction):
         self.transaction = transaction
         for subentity in self.subentities:
             subentity.setTransaction(transaction)
+            
+    def attributeSetter(self, *attrlist):
+        for attrName, typ in attrlist:
+            setattr(self, attrName, typ(getXValue(self.xmlSource, attrName, XValueHelper(self))))
+            self.valueNodes.append(attrName)
      
 class Loop(ControlEntity):
     def __init__(self, transaction, xmlSource):
@@ -148,26 +154,30 @@ class Loop(ControlEntity):
         self.restartException = xmlSource.get("restart")
     
     def action(self):
-        assert len(self.subentities) == 1
+        contException = False
         while self.test():
-            entity = self.subentities[0]
-            with entity.xcontext:
-                i = iter(entity.action())
-                while True:
-                    try:
-                        event = next(i)
-                        if isinstance(event, ExceptionEvent) and event.type == self.restartException:
+            for entity in self.subentities:
+                with entity.xcontext:
+                    i = iter(entity.action())
+                    while True:
+                        try:
+                            event = next(i)
+                            if isinstance(event, ExceptionEvent) and event.type == self.restartException:
+                                contException = True
+                                break
+                            yield event
+                        except StopIteration:
                             break
-                        yield event
-                    except StopIteration:
+                        except GeneratorExit:
+                            return
+                        except BaseException as e:
+                            print("EXCEPTION : {0}".format(str(e)))
+                            traceback.print_exc(file=sys.stderr)
+                            self.simulation.stopSimulation()
+                    if contException:
+                        contException = False
                         break
-                    except GeneratorExit:
-                        return
-                    except BaseException as e:
-                        print("EXCEPTION : {0}".format(str(e)))
-                        traceback.print_exc(file=sys.stderr)
-                        self.simulation.stopSimulation()
-    
+        
     def test(self):
         raise NotImplementedError("Abstract method")
      
@@ -182,12 +192,12 @@ class InfinityLoop (Loop):
 class CountedLoop(Loop):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        self.count = 0
-        self.limit = int(getXValue(xmlSource, "count", XValueHelper(self)))
+        self.i = 0
+        self.attributeSetter(("count", int))
             
     def test(self):
-        self.count += 1
-        return self.count <= self.limit
+        self.i += 1
+        return self.i <= self.count
     
     
 class While(Loop):
@@ -202,9 +212,8 @@ class While(Loop):
 class WhileInRange(Loop):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        self.property = Property(xmlSource.get("property")) 
-        self.minimum = float(getXValue(xmlSource, "minimum", XValueHelper(self)))
-        self.maximum = float(getXValue(xmlSource, "maximum", XValueHelper(self)))
+        self.property = Property(xmlSource.get("property"))
+        self.attributeSetter(("minimum", float), ("maximum", float))
         
     def test(self):
         value = float(self.property.get(self.transaction, self))
@@ -278,7 +287,7 @@ class Branching(ControlEntity):
 class WithProbability(Branching):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        self.probability = float(getXValue(xmlSource, "probability", XValueHelper(self)))
+        self.attributeSetter(("probability", float))
         
     def test(self):
         x = random.random()
@@ -296,8 +305,7 @@ class IfInRange(Branching):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.property = Property(xmlSource.get("property")) 
-        self.minimum = float(getXValue(xmlSource, "minimum", XValueHelper(self)))
-        self.maximum = float(getXValue(xmlSource, "maximum", XValueHelper(self)))
+        self.attributeSetter(("minimum", float), ("maximum", float))
         
     def test(self):
         value = float(self.property.get(self.transaction, self))
@@ -345,12 +353,11 @@ class SubTransaction(TransactionEntity):
         if self.savedEntities is None:
             self.savedEntities = trans.entities
         self.simulation.activate(trans, trans.run(), at = 0)
-        finishedSubtrans = -1
-        exceptionEvent = None
-        while finishedSubtrans != trans.pid:
-            yield waitevent, self.transaction, self.simulation.returnSignal
-            finishedSubtrans = self.simulation.returnSignal.signalparam[0]
-            exceptionEvent = self.simulation.returnSignal.signalparam[1]
+        
+        trans.returnSignal = SimEvent("return from subtransaction", sim=self.simulation)
+        
+        yield waitevent, self.transaction, trans.returnSignal
+        exceptionEvent = trans.returnSignal.signalparam
         if exceptionEvent is not None:
             try:
                 yield exceptionEvent

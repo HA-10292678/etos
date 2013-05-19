@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re
+from functools import total_ordering
 
 def dtstr(sec):
     return str(DayTime(seconds=sec))
@@ -7,6 +8,7 @@ def dtstr(sec):
 def strdt(s):
     return DayTime.fromString(s)
 
+@total_ordering
 class DayTime:
     def __init__(self, *, days = 0, hours = 0, minutes = 0, seconds = 0):
             self.t = days * 60 * 60 * 24 + hours * 60 * 60 + minutes * 60 + seconds
@@ -50,6 +52,11 @@ class DayTime:
     @property
     def totalDays(self):
         return self.t / (60 * 60 * 24)
+
+
+    @property
+    def dayPart(self):
+        return DayTime(hours=self.hours, minutes=self.minutes, seconds = self.seconds)
         
     @property
     def days(self):
@@ -67,3 +74,9 @@ class DayTime:
     
     def __int__(self):
         return int(self.t)
+    
+    def __eq__(self, other):
+        return self.t == other.t
+    
+    def __lt__(self, other):
+        return self.t < other.t
