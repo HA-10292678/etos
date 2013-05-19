@@ -13,6 +13,10 @@ from Entity import *
 from Model import *
 from Actor import Actor
 
+class ExceptionEvent:
+    def __init__(self, type):
+        self.type = type
+        
  
 def populateEntities(factory, transaction, xmlNode):
     entities = [factory.createFromXml(node, transaction, base)
@@ -80,6 +84,7 @@ class Transaction(Process):
     def run(self): #SimPy PEM method
         self.startTime = self.simulation.now()
         interrupted = False
+        exceptionEvent = None
         for entity in self.entities:
             entity.startTime = self.simulation.now()
             with entity.xcontext:
@@ -89,8 +94,10 @@ class Transaction(Process):
                 while True:
                     try:
                         event = next(i)
-                        if event is None:
+                        print(self.pid, event.__class__, entity)
+                        if isinstance(event, ExceptionEvent):
                             interrupted = True
+                            exceptionEvent = event
                             break
                         yield event
                     except StopIteration:
@@ -98,10 +105,15 @@ class Transaction(Process):
                     except BaseException as e:
                         print("EXCEPTION : {0}".format(str(e)))
                         traceback.print_exc(file=sys.stderr)
+                        self.simulation.stopSimulation()
                 if interrupted:
                     break
         if not self.topLevel:
-            self.simulation.returnSignal.signal((self.ppid, interrupted))
+            self.simulation.returnSignal.signal((self.pid, exceptionEvent))
+        else:
+            if interrupted and exceptionEvent.type != "__exit__":
+                print("UNHANDLED EXCEPTION '{0}'".format(exceptionEvent.type))
+            
 
     @property 
     def topLevel(self):
@@ -133,6 +145,7 @@ class ControlEntity(SimpleEntity):
 class Loop(ControlEntity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
+        self.restartException = xmlSource.get("restart")
     
     def action(self):
         assert len(self.subentities) == 1
@@ -143,6 +156,8 @@ class Loop(ControlEntity):
                 while True:
                     try:
                         event = next(i)
+                        if isinstance(event, ExceptionEvent) and event.type == self.restartException:
+                            break
                         yield event
                     except StopIteration:
                         break
@@ -151,7 +166,7 @@ class Loop(ControlEntity):
                     except BaseException as e:
                         print("EXCEPTION : {0}".format(str(e)))
                         traceback.print_exc(file=sys.stderr)
-                        sys.exit()
+                        self.simulation.stopSimulation()
     
     def test(self):
         raise NotImplementedError("Abstract method")
@@ -195,6 +210,39 @@ class WhileInRange(Loop):
         value = float(self.property.get(self.transaction, self))
         return self.minimum <= value <= self.maximum
             
+class TryCatch(ControlEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.exceptionType = xmlSource.get("exception")
+        
+    def action(self):
+        assert len(self.subentities) == 2
+        entity = self.subentities[0]
+        exceptEntity = self.subentities[1]
+        exceptHandler = False
+        
+        while True:
+            with entity.xcontext:
+                i = iter(entity.action())
+                while True:
+                    try:
+                        event = next(i)
+                        if (not exceptHandler
+                                and isinstance(event, ExceptionEvent)
+                                and event.type == self.exceptionType):
+                            entity = exceptEntity
+                            exceptHandler = True
+                            break
+                        yield event
+                    except StopIteration:
+                        return
+                    except GeneratorExit:
+                        return
+                    except BaseException as e:
+                        print("EXCEPTION : {0}".format(str(e)))
+                        traceback.print_exc(file=sys.stderr)
+                        self.simulation.stopSimulation()
+
             
 class Branching(ControlEntity):
     def __init__(self, transaction, xmlSource):
@@ -216,13 +264,13 @@ class Branching(ControlEntity):
                     event = next(i)
                     yield event
                 except StopIteration:
-                    break
+                    return
                 except GeneratorExit:
                     return
                 except BaseException as e:
                     print("EXCEPTION : {0}".format(str(e)))
                     traceback.print_exc(file=sys.stderr)
-                    sys.exit()
+                    self.simulation.stopSimulation()
     
     def test(self):
         raise NotImplementedError("Abstract method")
@@ -298,13 +346,14 @@ class SubTransaction(TransactionEntity):
             self.savedEntities = trans.entities
         self.simulation.activate(trans, trans.run(), at = 0)
         finishedSubtrans = -1
-        while finishedSubtrans != self.transaction.pid:
+        exceptionEvent = None
+        while finishedSubtrans != trans.pid:
             yield waitevent, self.transaction, self.simulation.returnSignal
             finishedSubtrans = self.simulation.returnSignal.signalparam[0]
-            interrupted = self.simulation.returnSignal.signalparam[1]
-        if interrupted:
+            exceptionEvent = self.simulation.returnSignal.signalparam[1]
+        if exceptionEvent is not None:
             try:
-                yield None
+                yield exceptionEvent
             except GeneratorExit:
                 return
 
@@ -314,7 +363,18 @@ class ExitTransaction(SimpleEntity):
         
     def action(self):
         try:
-            yield None
+            yield ExceptionEvent("__exit__")
+        except GeneratorExit:
+            return
+        
+class ExceptionEntity(SimpleEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.type = xmlSource.get("type", "")
+        
+    def action(self):
+        try:
+            yield ExceptionEvent(self.type)
         except GeneratorExit:
             return
         
@@ -347,6 +407,8 @@ class EntityFactory:
                       while_in_range = WhileInRange,
                       if_in_range = IfInRange,
                       exit = ExitTransaction,
+                      exception = ExceptionEntity,
+                      try_catch = TryCatch,
                       stop_simulation = StopSimulation,
                       set = SetEntity)
     def __init__(self, entityNode, mapping = None):

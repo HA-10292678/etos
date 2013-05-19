@@ -32,7 +32,7 @@ def runserver():
     shared_job_q = manager.get_job_q()
     shared_result_q = manager.get_result_q()
 
-    tasks = [dict(cars=150, stations=s, shoppingProbability=sp) 
+    tasks = [dict(cars=50, stations=s, shoppingProbability=sp) 
                for s in range(1,51,1)for sp in np.arange(0.1, 1.1, 0.1)]
     numTasks=len(tasks)
     for task in tasks:
