@@ -3,7 +3,7 @@
 import SimPy.Simulation
 import Transaction
 import Entity
-from UrlUtil import xmlLoader
+from UrlUtil import xmlLoader, xmlStringLoader
 from XValue import *
 from Collector import Collector
 
@@ -24,7 +24,10 @@ class Simulation (SimPy.Simulation.Simulation):
 
     def start(self, transaction, duration = 0xFFFFFFFF):
         if isinstance(transaction, str):
-            transaction = Transaction.Transaction(xmlLoader(transaction), self)
+            transaction = Transaction.Transaction(
+                xmlStringLoader(transaction) if transaction.strip().startswith("<")
+                    else xmlLoader(transaction),
+                self)
         self.activate(transaction, transaction.run())
         self.simulate(until=int(duration))
         
@@ -44,7 +47,7 @@ class Simulation (SimPy.Simulation.Simulation):
             return self.collector.categories[name]
         else:
             raise AttributeError("unknown attribute") 
-        initialAmount
+        
     def getTId(self):
         self.tcounter += 1
         return self.tcounter

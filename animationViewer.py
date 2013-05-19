@@ -39,6 +39,6 @@ while True:
 		if cb[i] is None:		
 			cb[i] = fig.colorbar(lines,ax=axes[dcol-2])
 		else:
-			cb[i].update_normal(lines)		
+			cb[i].update_bruteforce(lines)		
 		fig.canvas.draw()
 	time.sleep(20)

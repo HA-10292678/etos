@@ -104,6 +104,13 @@ class XmlSource:
       for element, base in zip(self.elements, self.bases):
         for node in element:
           yield node, base
+          
+
+def xmlStringLoader(xml):
+    nodes = XmlSource()
+    root = etree.fromstring(xml)
+    nodes.append(root)
+    return nodes
 
 def xmlLoader(*args, base=None):
     urls =  []
