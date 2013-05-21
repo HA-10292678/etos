@@ -127,12 +127,14 @@ class Transaction(Process):
         
 class ControlEntity(SimpleEntity):
     """
-        Abstract base class for entity, which control some subtransactions
+        Abstract base class for entities which controls some subtransactions
     """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.xmlSource = xmlSource
         self.valueNodes = []
+        self.iteration = 0
+        self.subentity = 0
     
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
@@ -147,6 +149,42 @@ class ControlEntity(SimpleEntity):
         for attrName, typ in attrlist:
             setattr(self, attrName, typ(getXValue(self.xmlSource, attrName, XValueHelper(self))))
             self.valueNodes.append(attrName)
+     
+    
+    def nextSubEntity(self, exception):
+        pass
+    
+    def nextIteration(self, exception):
+        pass
+    
+    def acceptException(self, exception):
+        pass
+    
+    def action(self):
+        exception = None
+        while self.nextIteration(self, exception):
+            while self.nextSubEntity(self, exception):
+                entity = self.subentities[self.subentity]
+                with entity.xcontext:
+                    i = iter(entity.action)
+                    while True:
+                        try: 
+                            event = next(i)
+                            if isinstance(event, ExceptionEvent) and self.acceptException(event):
+                                exception = event
+                                break
+                            yield event
+                            exception = None
+                        except StopIteration:
+                            break
+                        except GeneratorExit:
+                            return
+                        except BaseException as e:
+                            print("EXCEPTION : {0}".format(str(e)))
+                            traceback.print_exc(file=sys.stderr)
+                            self.simulation.stopSimulation()
+                        
+                        
      
 class Loop(ControlEntity):
     def __init__(self, transaction, xmlSource):
@@ -188,6 +226,19 @@ class InfinityLoop (Loop):
         
     def test(self):
         return True
+
+class Block(Loop):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        self.open = True
+        
+    def test(self):
+        if self.open:
+            self.open=False
+            return True
+        else:
+            return False
+
     
 class CountedLoop(Loop):
     def __init__(self, transaction, xmlSource):
@@ -417,7 +468,9 @@ class EntityFactory:
                       exception = ExceptionEntity,
                       try_catch = TryCatch,
                       stop_simulation = StopSimulation,
+                      block = Block,
                       set = SetEntity)
+    
     def __init__(self, entityNode, mapping = None):
         if mapping is None:
             mapping = EntityFactory.stdMapping
