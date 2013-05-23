@@ -133,8 +133,7 @@ class ControlEntity(SimpleEntity):
         super().__init__(transaction, xmlSource)
         self.xmlSource = xmlSource
         self.valueNodes = []
-        self.iteration = 0
-        self.subentity = 0
+        self.entityIndex = None
     
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
@@ -150,31 +149,37 @@ class ControlEntity(SimpleEntity):
             setattr(self, attrName, typ(getXValue(self.xmlSource, attrName, XValueHelper(self))))
             self.valueNodes.append(attrName)
      
+     
+    def validateSubentities(self):
+        return len(self.subentities) > 0
     
     def nextSubEntity(self, exception):
-        pass
+        raise NotImplementedError("Abstract method")
     
-    def nextIteration(self, exception):
-        pass
+    def nextIteration(self):
+        raise NotImplementedError("Abstract method")
     
-    def acceptException(self, exception):
-        pass
+    def handledException(self, exception):
+        raise NotImplementedError("Abstract method")
     
     def action(self):
-        exception = None
-        while self.nextIteration(self, exception):
-            while self.nextSubEntity(self, exception):
-                entity = self.subentities[self.subentity]
+        if not self.validateSubentities():
+            raise AttributeError("Control entity with none subentity")
+        self.entityIndex = -1
+        self.iterationIndex = -1
+        while self.nextIteration():
+            exception = None
+            while self.nextSubEntity(exception):
+                entity = self.subentities[self.entityIndex]
                 with entity.xcontext:
-                    i = iter(entity.action)
+                    i = iter(entity.action())
                     while True:
                         try: 
                             event = next(i)
-                            if isinstance(event, ExceptionEvent) and self.acceptException(event):
+                            if isinstance(event, ExceptionEvent) and self.handledException(event):
                                 exception = event
                                 break
                             yield event
-                            exception = None
                         except StopIteration:
                             break
                         except GeneratorExit:
@@ -183,41 +188,28 @@ class ControlEntity(SimpleEntity):
                             print("EXCEPTION : {0}".format(str(e)))
                             traceback.print_exc(file=sys.stderr)
                             self.simulation.stopSimulation()
-                        
-                        
+                                             
      
 class Loop(ControlEntity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.restartException = xmlSource.get("restart")
     
-    def action(self):
-        contException = False
-        while self.test():
-            for entity in self.subentities:
-                with entity.xcontext:
-                    i = iter(entity.action())
-                    while True:
-                        try:
-                            event = next(i)
-                            if isinstance(event, ExceptionEvent) and event.type == self.restartException:
-                                contException = True
-                                break
-                            yield event
-                        except StopIteration:
-                            break
-                        except GeneratorExit:
-                            return
-                        except BaseException as e:
-                            print("EXCEPTION : {0}".format(str(e)))
-                            traceback.print_exc(file=sys.stderr)
-                            self.simulation.stopSimulation()
-                    if contException:
-                        contException = False
-                        break
-        
-    def test(self):
-        raise NotImplementedError("Abstract method")
+    def nextSubEntity(self, exception):
+        if exception is not None:
+            return False
+        self.entityIndex += 1
+        return self.entityIndex < len(self.subentities)
+
+    def nextIteration(self):
+        self.iterationIndex += 1
+        if self.test():
+            self.entityIndex = -1
+            return True
+        return False
+    
+    def handledException(self, exception):
+        return exception.type == self.restartException
      
      
 class InfinityLoop (Loop):
@@ -226,29 +218,14 @@ class InfinityLoop (Loop):
         
     def test(self):
         return True
-
-class Block(Loop):
-    def __init__(self, transaction, xmlSource):
-        super().__init__(transaction, xmlSource)
-        self.open = True
-        
-    def test(self):
-        if self.open:
-            self.open=False
-            return True
-        else:
-            return False
-
     
 class CountedLoop(Loop):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        self.i = 0
         self.attributeSetter(("count", int))
             
     def test(self):
-        self.i += 1
-        return self.i <= self.count
+        return self.iterationIndex < self.count
     
     
 class While(Loop):
@@ -270,67 +247,68 @@ class WhileInRange(Loop):
         value = float(self.property.get(self.transaction, self))
         return self.minimum <= value <= self.maximum
             
-class TryCatch(ControlEntity):
+            
+class NonIterationControl(ControlEntity):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        
+    def nextIteration(self):
+        self.iterationIndex += 1
+        return self.iterationIndex == 0
+
+class Block(NonIterationControl):
+    def __init__(self, transaction, xmlSource):
+        super().__init__(transaction, xmlSource)
+        
+    def handledException(self, exception):
+        return False
+    
+    def nextSubEntity(self, exception):
+        assert exception is None
+        self.entityIndex += 1
+        return self.entityIndex < len(self.subentities)
+            
+class TryCatch(NonIterationControl):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.exceptionType = xmlSource.get("exception")
         
-    def action(self):
-        assert len(self.subentities) == 2
-        entity = self.subentities[0]
-        exceptEntity = self.subentities[1]
-        exceptHandler = False
-        
-        while True:
-            with entity.xcontext:
-                i = iter(entity.action())
-                while True:
-                    try:
-                        event = next(i)
-                        if (not exceptHandler
-                                and isinstance(event, ExceptionEvent)
-                                and event.type == self.exceptionType):
-                            entity = exceptEntity
-                            exceptHandler = True
-                            break
-                        yield event
-                    except StopIteration:
-                        return
-                    except GeneratorExit:
-                        return
-                    except BaseException as e:
-                        print("EXCEPTION : {0}".format(str(e)))
-                        traceback.print_exc(file=sys.stderr)
-                        self.simulation.stopSimulation()
+    def handledException(self, exception):
+        return self.entityIndex == 0 and exception.type == self.exceptionType
 
+    def nextSubEntity(self, exception):
+        if self.entityIndex == -1: #enter try section
+            self.entityIndex = 0
+            return True
+        if self.entityIndex == 0 and exception is not None:
+            self.entityIndex = 1   #go to catch section
+            return True
+        return False #else leave try-catch
+     
+    def validateSubentities(self):
+        return len(self.subentities) == 2
             
-class Branching(ControlEntity):
+class Branching(NonIterationControl):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
     
-    def action(self):
-        assert len(self.subentities) in (1,2)
+    def handledException(self, exception):
+        return False
+    
+    def nextSubEntity(self, exception):
+        assert exception is None
+        if self.entityIndex >= 0:
+            return False
         if self.test():
-            entity = self.subentities[0]
-        elif len(self.subentities) == 2:
-            entity = self.subentities[1]
-        else:
-            return
-            
-        with entity.xcontext:
-            i = iter(entity.action())
-            while True:
-                try:
-                    event = next(i)
-                    yield event
-                except StopIteration:
-                    return
-                except GeneratorExit:
-                    return
-                except BaseException as e:
-                    print("EXCEPTION : {0}".format(str(e)))
-                    traceback.print_exc(file=sys.stderr)
-                    self.simulation.stopSimulation()
+            self.entityIndex = 0
+            return True
+        if len(self.subentities) == 2:
+                self.entityIndex = 1
+                return True
+        return False
+    
+    def validateSubentities(self):
+        return 1 <= len(self.subentities) <= 2
     
     def test(self):
         raise NotImplementedError("Abstract method")
