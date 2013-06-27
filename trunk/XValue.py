@@ -66,7 +66,7 @@ class XValueContext:
         return True
     
     @property
-    def t(self):  #return auxiliary x-value represented context time
+    def t(self):  #returns auxiliary x-value represented context time
         return XValue(lambda t:t, self)
     
 def arity(func):
@@ -138,7 +138,7 @@ class XValue:
         elif isinstance(x, XValue):
             x._eval()
             return op(self.rval, x.rval) if not reversedOperands else op(x.rval, self.rval)
-        else:
+        else: 
             raise TypeError("invalid type of operand in binary operation")
         
     def _unaryOperation(self, op): #unary operators are simple (no any conversions)

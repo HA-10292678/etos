@@ -20,6 +20,6 @@ class Dumper():
             self.dumped.add(obj)
             return {key : self.dump(value) for key,value in vars(obj).items() }
         else:
-            return repr(obj)
+            return self.dump(vars(obj))
 
 
