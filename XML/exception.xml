@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<transaction>
+ 	<counted_loop>
+		<count>5</count>
+        <transaction>
+            <trace text="pass"></trace>
+            <exception type="x"/>
+        </transaction>
+    </counted_loop>
+</transaction>

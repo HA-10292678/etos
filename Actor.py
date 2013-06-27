@@ -1,7 +1,7 @@
 from XValue import *
 
 class Actor:
-    def __init__(self, simulation, xmlSource, extraProperties = False):
+    def __init__(self, simulation, xmlSource = None, extraProperties = False):
         self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)
         self.simulation = simulation
         self.xmlSource = xmlSource

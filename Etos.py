@@ -21,12 +21,12 @@ class Simulation (SimPy.Simulation.Simulation):
         self.logging = True
 
 
-    def start(self, transaction, duration = 0xFFFFFFFF):
+    def start(self, transaction, duration = 0xFFFFFFFF, actor = None):
         if isinstance(transaction, str):
             transaction = Transaction.Transaction(
                 xmlStringLoader(transaction) if transaction.strip().startswith("<")
                     else xmlLoader(transaction),
-                self)
+                self, actor=actor)
         self.activate(transaction, transaction.run())
         self.simulate(until=int(duration))
         

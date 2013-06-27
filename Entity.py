@@ -16,14 +16,20 @@ class EntityError:
 class Entity:
     def __init__(self, transaction, xmlSource):
         self.id = xmlSource.commonId
+        self.xmlSource = xmlSource
         self.transaction = transaction
         self.simulation = transaction.simulation
+        self.actor = transaction.actor
         self.xcontext = XValueContext(lambda: self.simulation.now() - self.startTime)
         self.startTime = None
         self.t = self.xcontext.t
 
     def setTransaction(self, transaction):
         self.transaction = transaction
+        
+    def attributeSetter(self, *attrlist):
+        for attrName, typ in attrlist:
+            setattr(self, attrName, typ(getXValue(self.xmlSource, attrName, XValueHelper(self))))
     
     def action(self):
         raise NotImplementedError("Abstract method")
@@ -123,9 +129,9 @@ class Checkpoint(SimpleEntity):
     (see class Measure)
     """
     def __init__(self, transaction, xmlSource):
-       super().__init__(transaction, xmlSource)
-       self.measures = [Measure(node) for node in xmlSource]
-       self.referedEntity = xmlSource.get("referedEntity", None)
+        super().__init__(transaction, xmlSource)
+        self.measures = [Measure(node) for node in xmlSource]
+        self.referedEntity = xmlSource.get("referedEntity", None)
     
     def action(self):
         yield self.hold(0)
@@ -149,10 +155,10 @@ class Checkpoint(SimpleEntity):
                 
 class Trace(SimpleEntity):
     def __init__(self, transaction, xmlSource):
-       super().__init__(transaction, xmlSource)
-       self.text = xmlSource.get("text", "trace")
+        super().__init__(transaction, xmlSource)
+        self.text = xmlSource.get("text", "trace")
        
     def action(self):
         yield self.hold(0)
         if self.simulation.logging:
-            print("{0}:: {1}".format(dtstr(self.simulation.t),self.text),file=sys.stderr)
+            print("{0}:: {1}".format(dtstr(self.simulation.t), self.text), file=sys.stderr)

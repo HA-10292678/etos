@@ -14,8 +14,8 @@ from Model import *
 from Actor import Actor
 
 class ExceptionEvent:
-    def __init__(self, type):
-        self.type = type
+    def __init__(self, eType):
+        self.type = eType
         
  
 def populateEntities(factory, transaction, xmlNode):
@@ -38,13 +38,23 @@ def populateSubTransactions(factory, transaction, xmlNode, valueNodes):
     return entities
  
 class Transaction(Process):
+    """
+    Representation of simulation process (including subprocesses).
+    Key attributes:
+        self.tid =
+            identification of instance of top level transaction (transaction-id)
+        self.pid =
+            internal identifier of internal simulation process (i.e. id of instance of subprocess)
+        self.template =
+            (optional) identification of transaction template (processed by transaction instances)
+    """
     def __init__(self,  transactionXmlNode, simulation, tid = None, ppid = None,
                  entitiesXmlNode = None, actor = None, entities = None, xcontext = None):
         super().__init__(sim=simulation)
         self.simulation = simulation
         try:
             self.entitiesXmlNode = entitiesXmlNode if entitiesXmlNode is not None else XmlSource()
-            self.pattern = transactionXmlNode.get("id")
+            self.template = transactionXmlNode.get("id")
             self.pid = self.simulation.getTId()
             self.id = tid if tid is not None else self.pid
             self.ppid = ppid
@@ -54,8 +64,8 @@ class Transaction(Process):
             else:
                 path, base = transactionXmlNode.getWithBase("actor")
                 if path is not None:
-                    self.actor = Actor(self.simulation, xmlLoader(path, base=base),
-                                       extraProperties = True)
+                    self.actor = Actor(self.simulation,
+                                       xmlLoader(path, base=base), extraProperties = True)
                 else:
                     self.actor = Actor(self.simulation, XmlSource())
 
@@ -69,6 +79,7 @@ class Transaction(Process):
             path, base = transactionXmlNode.getWithBase("entities")
             if path is not None:
                 self.entitiesXmlNode.append(xmlLoader(path, base=base))
+                
             if entities is None:
                 self.factory = EntityFactory(entitiesXmlNode)    
                 self.entities = populateEntities(self.factory, self, transactionXmlNode)
@@ -127,17 +138,18 @@ class Transaction(Process):
         
 class ControlEntity(SimpleEntity):
     """
-        Abstract base class for entities which controls some subtransactions
+        Abstract base class for entities which controls some subentities.
     """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
-        self.xmlSource = xmlSource
         self.valueNodes = []
         self.entityIndex = None
+        self.iterationIndex = None
     
     def populateSubEntities(self, entityNode):
         factory =  EntityFactory(entityNode)
-        self.subentities = populateSubTransactions(factory, self.transaction, self.xmlSource, self.valueNodes)
+        self.subentities = populateSubTransactions(factory, self.transaction,
+                                                   self.xmlSource, self.valueNodes)
         
     def setTransaction(self, transaction):
         self.transaction = transaction
@@ -148,7 +160,6 @@ class ControlEntity(SimpleEntity):
         for attrName, typ in attrlist:
             setattr(self, attrName, typ(getXValue(self.xmlSource, attrName, XValueHelper(self))))
             self.valueNodes.append(attrName)
-     
      
     def validateSubentities(self):
         return len(self.subentities) > 0
@@ -191,6 +202,9 @@ class ControlEntity(SimpleEntity):
                                              
      
 class Loop(ControlEntity):
+    """
+        Abstract base class for loop constructs.
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.restartException = xmlSource.get("restart")
@@ -210,6 +224,11 @@ class Loop(ControlEntity):
     
     def handledException(self, exception):
         return exception.type == self.restartException
+    
+    def test(self):
+        "loop condition (at start, if true loop continues)"
+        raise NotImplementedError("Abstract method")
+    
      
      
 class InfinityLoop (Loop):
@@ -249,6 +268,10 @@ class WhileInRange(Loop):
             
             
 class NonIterationControl(ControlEntity):
+    """
+        Abstract base class for non-loop control entities.
+        Non-loop constructs support only **limited** number of subentities (typically 1 or 2)
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         
@@ -257,6 +280,14 @@ class NonIterationControl(ControlEntity):
         return self.iterationIndex == 0
 
 class Block(NonIterationControl):
+    """
+        Block entity combines several subentities to one (top level) entity.
+        The block entity adds new level of indirection for coroutine yielding
+        but is useful for non-loop controls ().
+        
+        
+        Declarative element: block
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         
@@ -269,6 +300,16 @@ class Block(NonIterationControl):
         return self.entityIndex < len(self.subentities)
             
 class TryCatch(NonIterationControl):
+    """
+        Try-catch constructs (catching and handling of exception)
+        
+        Subentities:
+        ------------
+        # try section
+        # exception handler (catch section), optional
+        
+        Declarative element: try_catch
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.exceptionType = xmlSource.get("exception")
@@ -289,6 +330,14 @@ class TryCatch(NonIterationControl):
         return len(self.subentities) == 2
             
 class Branching(NonIterationControl):
+    """
+        Abstract base class for branching constructs.
+            
+        Subentities:
+        ------------
+        # if section
+        # else section
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
     
@@ -303,17 +352,24 @@ class Branching(NonIterationControl):
             self.entityIndex = 0
             return True
         if len(self.subentities) == 2:
-                self.entityIndex = 1
-                return True
+            self.entityIndex = 1
+            return True
         return False
     
     def validateSubentities(self):
         return 1 <= len(self.subentities) <= 2
     
     def test(self):
+        """branching condition (if true the if-section is executed)"""
         raise NotImplementedError("Abstract method")
     
 class WithProbability(Branching):
+    """
+        If-section (= first subentity) is executed with given probability (0, 1).
+        or optional else-section (second subentity) with complementary probability (1-p).
+        
+        Declarative element: with
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.attributeSetter(("probability", float))
@@ -323,6 +379,12 @@ class WithProbability(Branching):
         return x  < self.probability
     
 class If(Branching):
+    """
+       If-section (= first subentity) is executed if property is interpreted as true
+       (normal Python boolean semantics), otherwise else-section is only executed.
+       
+       Declarative element: if
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.property = Property(xmlSource.get("property")) 
@@ -360,6 +422,12 @@ class TransactionEntity(SimpleEntity):
 
         
 class StartTransaction(TransactionEntity):
+    """
+        New top level transaction is created and started (it runs independently on
+        parent transaction).
+            
+         Declarative element: start_transaction   
+    """
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
        
@@ -373,6 +441,7 @@ class SubTransaction(TransactionEntity):
     def __init__(self, transaction, xmlSource):
         super().__init__(transaction, xmlSource)
         self.savedEntities = None
+        self.returnSignal = None
             
     def action(self):
         trans = Transaction(self.transactionNode, simulation=self.simulation,
