@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import numbers
 import inspect
 import operator
@@ -13,6 +12,7 @@ from urllib.parse import urlparse, urljoin, urlunparse
 from urllib.request import urlopen
 import xml.etree.ElementTree as ET
 
+import TimeUtil
 
 def fmt(f, *params):
     replaces = []
@@ -110,9 +110,10 @@ class XValue:
     RANDOM = 1
     TIME_DEPENDENT = 2
       
-    def __init__(self, value):
+    def __init__(self, value, note = None):
         assert value is not None #null (undefined) values are not supported
         self.context = None
+        self.note = note
         if XValue.isPrimitiveType(value):
             self.type = XValue.FIXED #fixed integral, float number or bool
             self.fval = None
@@ -196,7 +197,7 @@ class XValue:
             
             params = [ parObject[parName] if parName in parObject else default
                         for parName, default in XValue.distDict[dist][1:] ]
-            return XValue(lambda : XValue.distDict[dist][0](*params))
+            return XValue(lambda : XValue.distDict[dist][0](*params), "rnd_"+dist)
         
         assert False, "Invalid JSON parsing"
                 
@@ -222,7 +223,7 @@ class XValue:
         return str(self.rval)
     
     def __repr__(self):
-        return str(self.rval)
+        return str(self.rval or self.note)
     
     
     def _binaryOperation(self, x, op, reversedOperands): #general code for binary operation
@@ -288,24 +289,32 @@ class XAttribute:
     @staticmethod
     def yamlToJson(text):
         text = text.strip()
+        text=TimeUtil.DayTime.substituteDayTimes(text)
         if re.match(r"\w+\s*:", text):
             text = re.sub(r"(\w+)\s*:", r'"\1":', text)
             return "{" + text + "}"
-        if re.match(r"^([a-z_][a-z0-9_]*\.)*[a-z_][a-z0-9_]*$", text):
+        if re.match(r"^([A-Za-z_][A-Za-z0-9_]*\.)*[A-Za-z_][A-Za-z0-9_]*$", text):
             return '"{0}"'.format(text)
         return text
         
         
     @staticmethod
-    def fromJsonString(name, jsonString, parameterDict = None):
+    def fromJsonString(name, yamlString, parameterDict = None):
         if parameterDict is not None:
-            jsonString = string.Template(jsonString).substitute(parameterDict)
-        obj = json.loads(XAttribute.yamlToJson(jsonString))
+            try:
+                yamlString = string.Template(yamlString).substitute(parameterDict)
+            except KeyError as e:
+                raise SimDslError("Undefined parameter {0}", e)
+        jsonizedString = XAttribute.yamlToJson(yamlString)
+        try:
+            obj = json.loads(jsonizedString)
+        except ValueError:
+            raise SimDslError("Invalid JSON: {0} (translated from '{1}')", jsonizedString, yamlString)
         contextTag = None if not isinstance(obj, dict) or "context" not in obj else obj["context"]
         return XAttribute(name, XValue.fromJson(obj), contextTag)
     
     def __str__(self):
-        return fmt("[ value: {0} #(context: {1}|nc)]", repr(self.xvalue), self.contextTag)
+        return fmt("{0}:{1}#([{2}])", self.name, repr(self.xvalue), self.contextTag)
 
 
 class FullId:
@@ -324,11 +333,12 @@ class FullId:
         return fmt("{0}#(:{1})", self.typeId, self.instanceId)
 
 class Node:
-    def __init__(self, typeTag):
+    def __init__(self, typeTag, level = 0):
         self.typeTag = typeTag
         self.attributes =  {}
         self.subnodes = []
         self.externalNodes = {}
+        self.level = level
         
     def addAttribute(self, attribute):
         assert attribute.name not in self.attributes
@@ -336,6 +346,10 @@ class Node:
         
     def addSubNode(self, node):
         self.subnodes.append(node)
+        
+    def __iter__(self):
+        return iter(self.nodes)
+        
         
     @property    
     def fullId(self):
@@ -356,11 +370,15 @@ class Node:
             subnode.merge(mergedict, overwrite)
         
     def __str__(self):
-        return (fmt("<{0}#( attrib:{1})#( elements: {2})#( exNodes: {3})>",
+        indent = self.level * "  "
+        return (fmt("{4}{{{0}#( <{1}>)#({3})#(\n{2}\n{4})}}",
                         self.typeTag,
-                        { key: str(value) for key, value in self.attributes.items()},
-                        [ str(node) for node in self.subnodes],
-                        { key : str(value) for key, value in self.externalNodes.items()}
+                        ", " .join( str(value) for value in self.attributes.values()),
+                        ",\n".join(str(node) for node in self.subnodes),
+                        ",\n".join("\n{2}EXTERNAL {0}\n{1}\n{2}END {0}".format(key, str(value), indent)
+                                   for key, value in self.externalNodes.items()
+                                   if not key.upper() == key),
+                        indent
                         ))
         
 
@@ -390,37 +408,44 @@ class QName:
 
 class EtreeBuilder:
     operatorNS = "http://jf.cz/ns/simdsl/operators"
-    
-    @staticmethod    
-    def build(url):
+    def __init__(self, paramDict = {}, level = 0):
+        self.paramDict = paramDict
+        self.level = level
+ 
+    def build(self, url):
         element, base = EtreeBuilder.openAndParseUrl(EtreeBuilder.normalizeUrl(url))
         if element is None:
             raise SimDslError("Invalid XML on URL {0}", EtreeBuilder.normalizeUrl(url))
-        return EtreeBuilder._createNode(element, base)
+        return self._createNode(element, base, self.level)
     
-    @staticmethod
-    def _createNode(element, base):
-        node = Node(element.tag)
+    def _createNode(self, element, base, level):
+        node = Node(element.tag, level)
         operators = []
         for key, value in element.attrib.items():
             qname = QName(key)
             if qname.hasNamespace(EtreeBuilder.operatorNS):
                 operators.append((qname.localname, value))
             else:
-                node.addAttribute(XAttribute.fromJsonString(key, value))
+                node.addAttribute(XAttribute.fromJsonString(key, value, self.paramDict))
     
-        node.subnodes = [EtreeBuilder._createNode(subelement, base) for subelement in element]
+        node.subnodes = [self._createNode(subelement, base, level + 1) for subelement in element]
         
         for opcode, url in operators:
-            subBuilder = EtreeBuilder()
+            subBuilder = EtreeBuilder(self.paramDict, level + 1)
             target = urljoin(base, url)
             externalNode = subBuilder.build(target)
             if opcode == "INSERT":
                 if node.subnodes:
                     raise SimDslError("Insertion into nonempty node")
-                node.subnodes = externalNode.subnodes 
+                node.subnodes = [externalNode]
+            elif opcode == "INSERT_SUBNODES":
+                if node.subnodes:
+                    raise SimDslError("Insertion into nonempty node")
+                node.subnodes = externalNode.subnodes                 
             elif opcode == "APPEND":
-                node.subnodes.extends(externalNode.subnodes)
+                node.subnodes.add(externalNode)
+            elif opcode == "APPEND_SUBNODES":
+                node.subnodes.extends(externalNode.subnodes)                
             elif opcode == "INJECT_ATTRS":
                 node.merge({mnode.fullId : mnode.attributes
                                     for mnode in externalNode.subnodes}, overwrite = True)
@@ -429,9 +454,12 @@ class EtreeBuilder:
                                     for mnode in externalNode.subnodes}, overwrite = False)
             elif opcode == "SKIP_NODES":
                 node.subnodes = []
+            elif opcode == "SKIP_ATTRS":
+                node.attributes = {}
             else:
+                if opcode == opcode.upper():
+                    raise SimDslError("Unsupported internal operation {0}", opcode)
                 node.externalNodes[opcode]=externalNode
-        print(node.fullId)
         return node
        
     @staticmethod
@@ -460,7 +488,8 @@ class EtreeBuilder:
         return urlunparse((scheme, url.netloc, path, "", "", url.fragment))
         
 
-print(EtreeBuilder.build("XML/test.xml#a"))
+builder = EtreeBuilder(dict(cars=10, shoppingProbability=0.5, stations=5))
+print(builder.build("XML/newsyntax.xml#transaction[@id='starter']"))
 
 #context = XValueContext()        
 #p = XAttribute.fromJsonString("velocity", 'pnormal:{mu:$mu, sigma:100}', dict(mu=10))
