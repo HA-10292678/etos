@@ -172,7 +172,7 @@ class BaseXAttribute:
     def isCompound(self):
         raise NotImplementedError("Abstract method")
 
-class XAttribute:
+class XAttribute(BaseXAttribute):
     def __init__(self, name, *, contextTag = None, xvalue = None, parameterId = None):
         super().__init__(name, contextTag)
         self.xvalue = xvalue
